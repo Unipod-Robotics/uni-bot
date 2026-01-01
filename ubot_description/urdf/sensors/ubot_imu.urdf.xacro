@@ -10,7 +10,7 @@
   <xacro:property name="com_z" value="0.010541" /> 
   <xacro:property name="stand_height" value="${imu_height}" /> 
 
-  <xacro:property name="imu_x" value="0.2155" /> 
+  <xacro:property name="imu_x" value="0.0" /> 
   <xacro:property name="imu_y" value="0.0" /> 
   <xacro:property name="imu_z" value="-0.0075" /> 
 

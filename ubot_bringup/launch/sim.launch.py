@@ -50,11 +50,15 @@ def generate_launch_description():
             '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
             '/camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
             '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+
+            # IMU BRIDGE
+            '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU'
         ],
         remappings=[
             ('/camera/image', '/camera/rgb/image_raw'),
             ('/camera/depth_image', '/camera/depth/image_raw'),
             ('/camera/camera_info', '/camera/rgb/camera_info'),
+            ('/imu', '/imu/data')
         ],
         output='screen',
         parameters=[{'use_sim_time': True}]
