@@ -28,12 +28,20 @@ def generate_launch_description():
     )
     
     # 2. Gazebo
+    world_file = os.path.join(
+        get_package_share_directory('ubot_bringup'),
+        'worlds',
+        'basic.sdf'
+    )
+
+    # 2. Modify the gazebo launch description
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')]),
-        launch_arguments={'gz_args': '-r -v 4 sensors.sdf'}.items(),
+        launch_arguments={'gz_args': f'-r -v 4 {world_file}'}.items(),
     )
-    
+
+
     # 3. ROS-Gazebo Bridge (Clock, Cmd_vel, Odom, TF, Lidar, Camera)
     bridge = Node(
         package='ros_gz_bridge',
@@ -42,7 +50,7 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
             '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+            # '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             '/lidar@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
             
             # FIXED RGB-D BRIDGE MAPPING
@@ -71,7 +79,8 @@ def generate_launch_description():
         output='screen',
         arguments=[
             '-topic', 'robot_description', 
-            '-name', 'ubot', 
+            '-name', 'ubot',
+            '-world', 'sensors', 
             '-z', '0.1'
         ],
     )
@@ -114,6 +123,53 @@ def generate_launch_description():
             ('/cmd_vel_out', '/diff_drive_controller/cmd_vel'),
         ]
     )
+
+    ubot_bringup_dir = get_package_share_directory('ubot_bringup')
+    ubot_description_dir = get_package_share_directory('ubot_description')
+    slam_toolbox_dir = get_package_share_directory('slam_toolbox')
+    # Construction of the variable
+    nav2_launch_dir = os.path.join(get_package_share_directory('nav2_bringup'), 'launch')
+
+    # Path to SLAM parameters
+    slam_params_file = os.path.join(ubot_bringup_dir, 'config', 'mapper_params_online_async.yaml')
+    
+    # Path to RViz configuration
+    rviz_config_file = os.path.join(ubot_description_dir, 'rviz', 'slam.rviz')
+
+    # 7. Include SLAM Toolbox
+    slam_toolbox = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(slam_toolbox_dir, 'launch', 'online_async_launch.py')
+        ),
+        launch_arguments={
+            'slam_params_file': slam_params_file,
+            'use_sim_time': 'true'
+        }.items()
+    )
+
+    # 8. RViz2 Node
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        parameters=[{'use_sim_time': True}]
+    )
+
+    nav2_params_path = os.path.join(
+            get_package_share_directory('ubot_bringup'),
+            'config',
+            'nav2_params.yaml'
+        )
+
+    nav2 = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(nav2_launch_dir, 'navigation_launch.py')),
+        launch_arguments={
+            'use_sim_time': 'true',
+            'params_file': nav2_params_path 
+        }.items(),
+ 
+    )
     
     return LaunchDescription([
         node_robot_state_publisher,
@@ -127,6 +183,9 @@ def generate_launch_description():
                 on_exit=[load_joint_state_broadcaster, load_diff_drive_controller],
             )
         ),
+        slam_toolbox,
+        rviz_node, 
+        nav2
     ])
 
 # import os

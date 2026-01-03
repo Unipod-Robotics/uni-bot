@@ -20,7 +20,7 @@
     <link name="${prefix}front_left_wheel_link">
       <visual>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/>
         <material name="dark_gray">
@@ -56,7 +56,7 @@
     <link name="${prefix}front_right_wheel_link">
       <visual>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/>
         <material name="dark_gray">
@@ -91,7 +91,7 @@
     <link name="${prefix}rear_left_wheel_link">
       <visual>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/>
         <material name="dark_gray">
@@ -126,7 +126,7 @@
     <link name="${prefix}rear_right_wheel_link">
       <visual>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/>
         <material name="dark_gray">

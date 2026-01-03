@@ -15,7 +15,7 @@
     <link name="${prefix}base_link">
         <visual>
             <geometry>
-                <mesh filename="package://ubot_description/meshes/latest.stl" scale="1 1 1"/>
+                <mesh filename="file://$(find ubot_description)/meshes/latest.stl" scale="1 1 1"/>
             </geometry>
             <!-- <geometry>
                 <box size="${base_length} ${base_width} ${base_height}"/>
