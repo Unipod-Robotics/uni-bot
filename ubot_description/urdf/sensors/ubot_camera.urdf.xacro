@@ -32,7 +32,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
         <geometry>
-          <mesh filename="package://ubot_description/meshes/camera.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="file://$(find ubot_description)/meshes/camera.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <material name="camera_black">
           <color rgba="0.1 0.1 0.1 1"/>
@@ -122,7 +122,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/camera.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/camera.stl" scale="0.001 0.001 0.001"/>
         </geometry>
 
         <material name="white">

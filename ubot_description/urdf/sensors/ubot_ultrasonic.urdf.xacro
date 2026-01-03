@@ -24,7 +24,7 @@
       <visual>
         <origin xyz="-0.040 -0.057 0.019" rpy="0 0 ${pi}"/>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/ultrasonic.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/ultrasonic.stl" scale="0.001 0.001 0.001"/>
         </geometry>
 
 
@@ -52,7 +52,7 @@
       <visual>
         <origin xyz="0.040 0.057 0.019" rpy="0 0 0"/>
         <geometry>
-            <mesh filename="package://ubot_description/meshes/ultrasonic.stl" scale="0.001 0.001 0.001"/>
+            <mesh filename="file://$(find ubot_description)/meshes/ultrasonic.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <!-- <geometry>
           <cylinder radius="${ultrasonic_width/2}" length="${ultrasonic_height/2}"/>
