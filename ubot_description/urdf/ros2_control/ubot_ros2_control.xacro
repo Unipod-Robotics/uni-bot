@@ -1,5 +1,61 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="ubot_ros2_control" params="prefix use_gazebo">
+    <ros2_control name="UbotSystem" type="system">
+      <hardware>
+        <xacro:if value="${use_gazebo}">
+          <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </xacro:if>
+        <xacro:unless value="${use_gazebo}">
+          <plugin>ubot_control/UbotHardware</plugin>
+          
+          <!-- Only 2 "wheels" for control -->
+          <param name="left_wheel_name">front_left_wheel_joint</param>
+          <param name="right_wheel_name">front_right_wheel_joint</param>
+          
+          <param name="loop_rate">30</param>
+          <param name="device">/dev/ttyUSB0</param>
+          <param name="baud_rate">57600</param>
+          <param name="timeout_ms">1000</param>
+          <param name="enc_counts_per_rev">3000</param>
+          
+          <param name="pid_p">160</param>
+          <param name="pid_d">30</param>
+          <param name="pid_i">15</param>
+          <param name="pid_o">50</param>
+        </xacro:unless>
+      </hardware>
+
+      <!-- Define all 4 wheel joints for visualization -->
+      <joint name="${prefix}front_left_wheel_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      
+      <joint name="${prefix}rear_left_wheel_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      
+      <joint name="${prefix}front_right_wheel_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      
+      <joint name="${prefix}rear_right_wheel_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+    </ros2_control>
+  </xacro:macro>
+</robot>
+
+<!-- <?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     <xacro:macro name="ubot_ros2_control" params="prefix use_gazebo">
         <ros2_control name="UbotSystem" type="system">
             <hardware>
@@ -29,41 +85,5 @@
 
         </ros2_control>
     </xacro:macro>
-</robot>
-
-<!-- <?xml version="1.0"?>
-<robot name="uds_bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-<xacro:arg name="sim_mode" default="false"/>
-
-  <xacro:unless value="$(arg sim_mode)">
-      <ros2_control name="RealRobot" type="system">
-          <hardware>
-              <plugin>uds_hardware/DiffDriveUdsHardware</plugin>
-              <param name="left_wheel_name">left_wheel_joint</param>
-              <param name="right_wheel_name">right_wheel_joint</param>
-              <param name="loop_rate">30</param>
-              <param name="device">/dev/ttyUSB1</param>
-              <param name="baud_rate">57600</param>
-              <param name="timeout_ms">1000</param>
-              <param name="enc_counts_per_rev">1060</param>
-          </hardware>
-          <joint name="left_wheel_joint">
-              <command_interface name="velocity">
-                  <param name="min">-10</param>
-                  <param name="max">10</param>
-              </command_interface>
-              <state_interface name="position"/>
-              <state_interface name="velocity"/>
-          </joint>
-          <joint name="right_wheel_joint">
-              <command_interface name="velocity">
-                  <param name="min">-10</param>
-                  <param name="max">10</param>
-              </command_interface>
-              <state_interface name="position"/>
-              <state_interface name="velocity"/>
-          </joint>
-      </ros2_control>
-  </xacro:unless>
 </robot>
  -->
