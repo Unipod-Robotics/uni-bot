@@ -4,40 +4,27 @@
 #include <string>
 #include <cmath>
 
+class Wheel {
+public:
+  std::string name = "";
+  int enc = 0;
+  int last_enc = 0; // Tracks the previous tick count
+  double cmd = 0;
+  double pos = 0;
+  double vel = 0;
+  double rads_per_count = 0;
 
-class Wheel
-{
-    public:
+  void setup(const std::string &wheel_name, int counts_per_rev) {
+    name = wheel_name;
+    rads_per_count = (2.0 * M_PI) / counts_per_rev;
+  }
 
-    std::string name = "";
-    int enc = 0;
-    double cmd = 0;
-    double pos = 0;
-    double vel = 0;
-    double rads_per_count = 0;
-
-    Wheel() = default;
-
-    Wheel(const std::string &wheel_name, int counts_per_rev)
-    {
-      setup(wheel_name, counts_per_rev);
-    }
-
-    
-    void setup(const std::string &wheel_name, int counts_per_rev)
-    {
-      name = wheel_name;
-      rads_per_count = (2*M_PI)/counts_per_rev;
-    }
-
-    double calc_enc_angle()
-    {
-      return enc * rads_per_count;
-    }
-
-
-
+  void update_position() {
+    // Calculate the difference between current and last ticks
+    int diff = enc - last_enc;
+    pos += diff * rads_per_count;
+    last_enc = enc; 
+  }
 };
 
-
-#endif // UBOT_HARDWARE_WHEEL_HPP
+#endif

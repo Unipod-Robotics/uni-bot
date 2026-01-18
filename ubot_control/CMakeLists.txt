@@ -1,26 +1,58 @@
 cmake_minimum_required(VERSION 3.8)
 project(ubot_control)
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
-find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(hardware_interface REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBSERIAL REQUIRED libserial)
+
+add_library(ubot_control SHARED
+  src/ubot_hardware_interface.cpp
+)
+
+target_include_directories(ubot_control PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${LIBSERIAL_INCLUDE_DIRS}
+)
+
+target_link_libraries(ubot_control
+  ${LIBSERIAL_LIBRARIES}
+)
+
+ament_target_dependencies(ubot_control
+  rclcpp
+  rclcpp_lifecycle
+  hardware_interface
+  pluginlib
+)
+
+pluginlib_export_plugin_description_file(
+  hardware_interface
+  ubot_control.xml
+)
+
+install(
+  TARGETS ubot_control
+  LIBRARY DESTINATION lib
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  FILES ubot_control.xml
+  DESTINATION share/${PROJECT_NAME}
+)
 
 ament_package()
