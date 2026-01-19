@@ -1,0 +1,21 @@
+# ArUco Patrol Configuration
+
+aruco_detector:
+  ros__parameters:
+    marker_size: 0.15           # Marker size in meters (15cm)
+    dictionary_id: 0            # DICT_4X4_50
+    camera_frame: "camera_rgb_frame"
+    image_topic: "/camera/rgb/image_raw"
+    camera_info_topic: "/camera/rgb/camera_info"
+
+patrol_navigator:
+  ros__parameters:
+    marker_sequence: [0, 1, 2, 3, 4]   # Order of markers to visit
+    approach_distance: 0.5              # Stop distance from marker (m)
+    search_angular_speed: 0.4           # Rotation speed when searching (rad/s)
+    approach_linear_speed: 0.25         # Forward speed when approaching (m/s)
+    approach_angular_speed: 0.3         # Angular speed for centering (rad/s)
+    loop: true                          # Restart patrol after last marker
+    pause_duration: 2.0                 # Pause at each marker (seconds)
+    camera_frame: "camera_rgb_frame"
+    centering_threshold: 0.1            # Lateral offset tolerance (m)
