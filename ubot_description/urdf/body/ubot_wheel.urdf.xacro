@@ -1,18 +1,23 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:property name="wheel_radius" value="0.0325" />
-  <xacro:property name="wheel_offset" value="0.0000" /> 
+  <xacro:property name="wheel_radius" value="0.033" />
 
   <xacro:property name="wheel_separation" value="0.255" />
   <xacro:property name="wheel_width" value="0.0264" />
   <xacro:property name="wheel_mass" value="0.4" />
 
-  <xacro:property name="wheel_xoff1" value="0.054236" />
-  <xacro:property name="wheel_xoff2" value="0.190764" />
+  <xacro:property name="back_to_front_wheel" value="0.3043" />
+  <xacro:property name="back_to_rear_wheel" value="0.056536" />
 
-  <xacro:property name="wheel_yoff" value="0.113052" />
-  <xacro:property name="wheel_zoff" value="0.0" /> <!--0.018805-->
+
+
+  <xacro:property name="wheel_xoff1" value="${back_to_front_wheel - base_length/2}" />
+  <xacro:property name="wheel_xoff2" value="${base_length/2 - back_to_rear_wheel}" />
+
+  <xacro:property name="motor_cylinder_length" value="0.013552" />
+  <xacro:property name="wheel_yoff" value="${base_width/2 + motor_cylinder_length}" />
+  <xacro:property name="wheel_zoff" value="0.0188" /> <!--0.018805-->
 
 
 
@@ -25,7 +30,7 @@
         <!-- <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/> -->
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
         <material name="dark_gray">
           <color rgba="0.2 0.2 0.2 1"/>
@@ -35,7 +40,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
       </collision>
 
@@ -65,7 +70,7 @@
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
         <material name="dark_gray">
           <color rgba="0.2 0.2 0.2 1"/>
@@ -75,7 +80,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
       </collision>
 
@@ -104,7 +109,7 @@
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
         <material name="dark_gray">
           <color rgba="0.2 0.2 0.2 1"/>
@@ -114,7 +119,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
       </collision>
 
@@ -128,10 +133,11 @@
       </inertial>
     </link>
 
-    <joint name="${prefix}rear_left_wheel_joint" type="fixed">
+    <joint name="${prefix}rear_left_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
       <child link="${prefix}rear_left_wheel_link"/>
       <origin xyz="${-wheel_xoff2} ${wheel_yoff} ${wheel_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
     </joint>
 
     <link name="${prefix}rear_right_wheel_link">
@@ -142,7 +148,7 @@
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/> -->
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
         <material name="dark_gray">
           <color rgba="0.2 0.2 0.2 1"/>
@@ -152,7 +158,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
         <geometry>
-          <cylinder radius="${wheel_radius + wheel_offset}" length="${wheel_width}"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
       </collision>
 
@@ -166,10 +172,11 @@
       </inertial>
     </link>
 
-    <joint name="${prefix}rear_right_wheel_joint" type="fixed">
+    <joint name="${prefix}rear_right_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
       <child link="${prefix}rear_right_wheel_link"/>
       <origin xyz="${-wheel_xoff2} ${-wheel_yoff} ${wheel_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
     </joint>
   </xacro:macro>
 </robot>
