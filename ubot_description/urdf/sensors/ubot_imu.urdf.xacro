@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:property name="M_PI" value="3.1415926535897931" />
-  <xacro:property name="imu_mass" value="0.10321" />
+  <xacro:property name="imu_mass" value="0.050" />  <!-- 9-DOF IMU module with PCB ~50 g -->
   <xacro:property name="imu_length" value="0.0259" />
   <xacro:property name="imu_width" value="0.0155" />
   <xacro:property name="imu_height" value="0.015" />
@@ -12,7 +12,7 @@
 
   <xacro:property name="imu_x" value="0.0" /> 
   <xacro:property name="imu_y" value="0.0" /> 
-  <xacro:property name="imu_z" value="-0.0075" /> 
+  <xacro:property name="imu_z" value="0.0" /> 
 
 
 
@@ -40,7 +40,7 @@
 
       <inertial>
           <origin xyz="${com_x} ${com_y} ${com_z}" rpy="0 0 0"/>
-          <mass value="${imu_mass*1.25}"/>
+          <mass value="${imu_mass}"/>
           <inertia ixx="${(1/12) * imu_mass * ((imu_width * imu_width) + (imu_height * imu_height))}"  ixy="0.0"  ixz="0.0"  
                     iyy="${(1/12) * imu_mass * ((imu_length * imu_length) + (imu_height * imu_height))}"  iyz="0.0" 
                     izz="${(1/12) * imu_mass * ((imu_length * imu_length) + (imu_width * imu_width))}"/>

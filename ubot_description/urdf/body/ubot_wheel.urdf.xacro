@@ -3,7 +3,7 @@
 
   <xacro:property name="wheel_radius" value="0.033" />
 
-  <xacro:property name="wheel_separation" value="0.255" />
+  <xacro:property name="wheel_separation" value="0.264204" />  <!-- 2 * wheel_yoff = 2 * (base_width/2 + motor_cylinder_length) -->
   <xacro:property name="wheel_width" value="0.0264" />
   <xacro:property name="wheel_mass" value="0.4" />
 

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:property name="M_PI" value="3.1415926535897931" />
-  <xacro:property name="ultrasonic_mass" value="0.010321" />
+  <xacro:property name="ultrasonic_mass" value="0.008" />  <!-- HC-SR04 module ~8 g -->
   <xacro:property name="ultrasonic_length" value="0.05" />
   <xacro:property name="ultrasonic_width" value="0.014" />
   <xacro:property name="ultrasonic_height" value="0.02" />
@@ -35,7 +35,7 @@
 
       <inertial>
           <origin xyz="${com_x} ${com_y} ${com_z}" rpy="0 0 0"/>
-          <mass value="${ultrasonic_mass*1.25}"/>
+          <mass value="${ultrasonic_mass}"/>
           <inertia ixx="${(1/12) * ultrasonic_mass * ((ultrasonic_width * ultrasonic_width) + (ultrasonic_height * ultrasonic_height))}"  ixy="0.0"  ixz="0.0"  
                     iyy="${(1/12) * ultrasonic_mass * ((ultrasonic_length * ultrasonic_length) + (ultrasonic_height * ultrasonic_height))}"  iyz="0.0" 
                     izz="${(1/12) * ultrasonic_mass * ((ultrasonic_length * ultrasonic_length) + (ultrasonic_width * ultrasonic_width))}"/>
@@ -71,7 +71,7 @@
 
       <inertial>
           <origin xyz="${com_x} ${com_y} ${com_z}" rpy="0 0 0"/>
-          <mass value="${ultrasonic_mass*1.25}"/>
+          <mass value="${ultrasonic_mass}"/>
           <inertia ixx="${(1/12) * ultrasonic_mass * ((ultrasonic_width * ultrasonic_width) + (ultrasonic_height * ultrasonic_height))}"  ixy="0.0"  ixz="0.0"  
                     iyy="${(1/12) * ultrasonic_mass * ((ultrasonic_length * ultrasonic_length) + (ultrasonic_height * ultrasonic_height))}"  iyz="0.0" 
                     izz="${(1/12) * ultrasonic_mass * ((ultrasonic_length * ultrasonic_length) + (ultrasonic_width * ultrasonic_width))}"/>

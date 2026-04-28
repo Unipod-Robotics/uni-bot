@@ -3,17 +3,21 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.substitutions import Command
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     pkg_description = get_package_share_directory('ubot_description')
     pkg_bringup = get_package_share_directory('ubot_bringup')
     
     # Process URDF with use_gazebo:=false (real hardware)
-    robot_description_config = Command([
-        'xacro ', 
-        os.path.join(pkg_description, 'urdf', 'body', 'ubot_robot.urdf.xacro'), 
-        ' use_gazebo:=false'
-    ])
+    robot_description_config = ParameterValue(
+        Command([
+            'xacro ',
+            os.path.join(pkg_description, 'urdf', 'body', 'ubot_robot.urdf.xacro'),
+            ' use_gazebo:=false'
+        ]),
+        value_type=str
+    )
     
     # Robot State Publisher - NO sim_time
     node_robot_state_publisher = Node(
@@ -53,6 +57,14 @@ def generate_launch_description():
         arguments=['diff_drive_controller'],
         parameters=[{'use_sim_time': False}]
     )
+
+    # IMU Sensor Broadcaster Spawner
+    imu_sensor_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['imu_sensor_broadcaster'],
+        parameters=[{'use_sim_time': False}]
+    )
     
     # Twist Stamper (for teleop)
     twist_stamper = Node(
@@ -73,5 +85,6 @@ def generate_launch_description():
         controller_manager,
         joint_state_broadcaster_spawner,
         diff_drive_controller_spawner,
+        imu_sensor_broadcaster_spawner,
         twist_stamper,
     ])

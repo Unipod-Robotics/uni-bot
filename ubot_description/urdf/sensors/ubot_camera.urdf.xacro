@@ -4,7 +4,7 @@
   <xacro:property name="M_PI" value="3.1415926535897931" />
   
   <!-- Camera Physical Properties -->
-  <xacro:property name="camera_mass" value="0.10321" />
+  <xacro:property name="camera_mass" value="0.072" />  <!-- Intel RealSense D435 ~72 g -->
   <xacro:property name="camera_width" value="0.090" />  <!-- Typical depth camera length -->
   <xacro:property name="camera_length" value="0.025" />
   <xacro:property name="camera_height" value="0.025" />

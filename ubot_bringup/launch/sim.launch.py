@@ -6,16 +6,20 @@ from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     pkg_description = get_package_share_directory('ubot_description')
     
     # 1. Process URDF with use_gazebo:=true
-    robot_description_config = Command([
-        'xacro ', 
-        os.path.join(pkg_description, 'urdf', 'body', 'ubot_robot.urdf.xacro'), 
-        ' use_gazebo:=true'
-    ])
+    robot_description_config = ParameterValue(
+        Command([
+            'xacro ',
+            os.path.join(pkg_description, 'urdf', 'body', 'ubot_robot.urdf.xacro'),
+            ' use_gazebo:=true'
+        ]),
+        value_type=str
+    )
     
     node_robot_state_publisher = Node(
         package='robot_state_publisher',
@@ -159,18 +163,31 @@ def generate_launch_description():
     nav2_params_path = os.path.join(
             get_package_share_directory('ubot_bringup'),
             'config',
-            'nav2_params.yaml'
+            'sim_nav2_params.yaml'
         )
+
+    ekf_config_path = os.path.join(
+        get_package_share_directory('ubot_bringup'),
+        'config', 'ekf.yaml'
+    )
+
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_config_path]
+    )
 
     nav2 = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(nav2_launch_dir, 'navigation_launch.py')),
         launch_arguments={
             'use_sim_time': 'true',
-            'params_file': nav2_params_path 
+            'params_file': nav2_params_path
         }.items(),
- 
+
     )
-    
+
     return LaunchDescription([
         node_robot_state_publisher,
         gazebo,
@@ -183,8 +200,9 @@ def generate_launch_description():
                 on_exit=[load_joint_state_broadcaster, load_diff_drive_controller],
             )
         ),
+        ekf_node,
+        rviz_node,
         slam_toolbox,
-        rviz_node, 
         nav2
     ])
 

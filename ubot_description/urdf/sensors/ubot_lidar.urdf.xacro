@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:property name="M_PI" value="3.1415926535897931" />
-  <xacro:property name="lidar_mass" value="0.10321" />
+  <xacro:property name="lidar_mass" value="0.170" />  <!-- RPLIDAR A1/A2 ~170 g -->
   <xacro:property name="lidar_length" value="0.035" />
   <xacro:property name="lidar_width" value="0.035" />
   <xacro:property name="lidar_height" value="0.02580" />
@@ -48,10 +48,11 @@
 
       <inertial>
           <origin xyz="${com_x} ${com_y} ${com_z}" rpy="0 0 0"/>
-          <mass value="${lidar_mass*1.25}"/>
-          <inertia ixx="${(1/12) * lidar_mass * ((lidar_width * lidar_width) + (lidar_height * lidar_height))}"  ixy="0.0"  ixz="0.0"  
-                    iyy="${(1/12) * lidar_mass * ((lidar_length * lidar_length) + (lidar_height * lidar_height))}"  iyz="0.0" 
-                    izz="${(1/12) * lidar_mass * ((lidar_length * lidar_length) + (lidar_width * lidar_width))}"/>
+          <mass value="${lidar_mass}"/>
+          <!-- Cylinder inertia: r = lidar_width/2, h = lidar_height -->
+          <inertia ixx="${(1/12) * lidar_mass * (3*(lidar_width/2)*(lidar_width/2) + lidar_height*lidar_height)}"  ixy="0.0"  ixz="0.0"
+                    iyy="${(1/12) * lidar_mass * (3*(lidar_width/2)*(lidar_width/2) + lidar_height*lidar_height)}"  iyz="0.0"
+                    izz="${(1/2) * lidar_mass * (lidar_width/2)*(lidar_width/2)}"/>
       </inertial>
     </link>
 
