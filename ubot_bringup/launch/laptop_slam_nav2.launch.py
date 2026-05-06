@@ -44,7 +44,7 @@ def generate_launch_description():
     nav2 = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(nav2_launch_dir, 'navigation_launch.py')),
         launch_arguments={
-            'use_sim_time': 'false',  # CRITICAL: false for real robot!
+            'use_sim_time': 'false',
             'params_file': nav2_params_path 
         }.items(),
     )
@@ -52,5 +52,5 @@ def generate_launch_description():
     return LaunchDescription([
         slam_toolbox,
         rviz_node, 
-        nav2
+        # nav2
     ])

@@ -28,7 +28,7 @@
 
         <collision>
             <geometry>
-                <box size="${base_length} ${base_width} ${base_height}"/>
+                <box size="${base_length - 0.01} ${base_width - 0.01} ${base_height - 0.01}"/>
             </geometry>
             <origin xyz="0 0 ${base_height/2}" rpy="0 0 0"/>
         </collision>

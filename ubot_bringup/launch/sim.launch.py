@@ -97,7 +97,7 @@ def generate_launch_description():
             "joint_state_broadcaster", 
             "--param-file", 
             os.path.join(get_package_share_directory('ubot_bringup'), 
-                        'config', 'ubot_controllers.yaml')
+                        'config', 'sim_ubot_controllers.yaml')
         ],
         parameters=[{'use_sim_time': True}]
     )
@@ -109,7 +109,7 @@ def generate_launch_description():
             "diff_drive_controller", 
             "--param-file", 
             os.path.join(get_package_share_directory('ubot_bringup'), 
-                        'config', 'ubot_controllers.yaml')
+                        'config', 'sim_ubot_controllers.yaml')
         ],
         parameters=[{'use_sim_time': True}]
     )
@@ -168,7 +168,7 @@ def generate_launch_description():
 
     ekf_config_path = os.path.join(
         get_package_share_directory('ubot_bringup'),
-        'config', 'ekf.yaml'
+        'config', 'sim_ekf.yaml'
     )
 
     ekf_node = Node(

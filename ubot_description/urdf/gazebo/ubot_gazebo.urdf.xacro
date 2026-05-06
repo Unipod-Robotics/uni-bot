@@ -3,7 +3,7 @@
     <xacro:macro name="ubot_gazebo" params="prefix">
         <gazebo>
             <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-            <parameters>$(find ubot_bringup)/config/ubot_controllers.yaml</parameters>
+            <parameters>$(find ubot_bringup)/config/sim_ubot_controllers.yaml</parameters>
             </plugin>
         </gazebo>
 
