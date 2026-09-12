@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!--
+    Luxonis OAK-D Lite depth camera in the front CamCase.
+
+    camera_link sits at the centre of the RGB lens on the front face, X pointing out of
+    the lens. The CamCase tilts the camera 4.09 deg downward (camera_pitch).
+    Mesh: simplified 91 x 28 x 17.5 mm body with the three lenses, in Fusion world coords.
+  -->
+  <xacro:property name="camera_mass" value="0.061" />    <!-- OAK-D Lite datasheet -->
+  <xacro:property name="camera_width" value="0.091" />
+  <xacro:property name="camera_length" value="0.0175" />  <!-- depth, along X -->
+  <xacro:property name="camera_height" value="0.028" />
+
+  <xacro:property name="camera_x" value="0.167769" />
+  <xacro:property name="camera_y" value="0.0" />
+  <xacro:property name="camera_z" value="0.085654" />
+  <xacro:property name="camera_pitch" value="0.0714" />   <!-- rad, positive = looking down -->
+
+  <xacro:macro name="ubot_camera" params="prefix">
+
+    <!--CAMERA_LINK (OAK-D Lite body)-->
+    <link name="${prefix}camera_link">
+      <visual>
+        <!-- inverse of the joint transform, so the world-frame mesh lands in place -->
+        <origin xyz="-0.323197 0 -0.108988" rpy="0 ${-camera_pitch} 0"/>
+        <geometry>
+          <mesh filename="file://$(find ubot_description)/meshes/inspection/oakd_lite.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="camera_black">
+          <color rgba="0.1 0.1 0.1 1"/>
+        </material>
+      </visual>
+
+      <!-- No collision shape: the OAK-D sits inside the chassis collision box, so one here
+           would be unreachable. Add one if the camera is ever mounted proud of the body. -->
+
+      <inertial>
+        <origin xyz="${-camera_length/2} 0 0" rpy="0 0 0"/>
+        <mass value="${camera_mass}"/>
+        <inertia ixx="0.000046" ixy="0.0" ixz="0.0"
+                 iyy="0.000006" iyz="0.0"
+                 izz="0.000044"/>
+      </inertial>
+    </link>
+
+
+    <joint name="${prefix}camera_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}camera_link"/>
+      <origin xyz="${camera_x} ${camera_y} ${camera_z}" rpy="0 ${camera_pitch} 0"/>
+    </joint>
+
+    <!-- CAMERA_DEPTH_FRAME (Optical frame for depth)
+         This follows ROS REP-103 conventions X is right, Y is down, Z is forward -->
+    <link name="${prefix}camera_depth_frame"/>
+
+    <joint name="${prefix}camera_depth_joint" type="fixed">
+      <parent link="${prefix}camera_link"/>
+      <child link="${prefix}camera_depth_frame"/>
+      <!-- Rotate to optical frame X right, Y down, Z forward -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- CAMERA_RGB_FRAME (Optical frame for RGB) Typically aligned with depth frame-->
+    <link name="${prefix}camera_rgb_frame"/>
+
+    <joint name="${prefix}camera_rgb_joint" type="fixed">
+      <parent link="${prefix}camera_link"/>
+      <child link="${prefix}camera_rgb_frame"/>
+      <!-- Same orientation as depth frame -->
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+
+    <!-- CAMERA_OPTICAL_FRAME (Alias for compatibility) -->
+    <link name="${prefix}camera_optical_frame"/>
+
+    <joint name="${prefix}camera_optical_joint" type="fixed">
+      <parent link="${prefix}camera_depth_frame"/>
+      <child link="${prefix}camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+</robot>

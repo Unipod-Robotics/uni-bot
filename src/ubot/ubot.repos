@@ -1,0 +1,21 @@
+# Restore third-party sources with:
+#   vcs import src < src/ubot/ubot.repos
+# MS200_ros (Oradar MS200 lidar driver) is committed directly: it is a plain source
+# drop with no upstream git remote on this machine.
+repositories:
+  bno055:
+    type: git
+    url: https://github.com/flynneva/bno055.git
+    version: main
+  ldlidar_stl_ros2:
+    type: git
+    url: https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+    version: master
+  sllidar_ros2:
+    type: git
+    url: https://github.com/Slamtec/sllidar_ros2.git
+    version: main
+  topic_based_ros2_control:
+    type: git
+    url: https://github.com/PickNikRobotics/topic_based_ros2_control.git
+    version: main

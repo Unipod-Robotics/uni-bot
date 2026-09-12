@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- LDROBOT LD06 on top of the mast. lidar_link is at the centre of the LD06 body. -->
+  <xacro:property name="lidar_mass" value="0.042801" />
+  <xacro:property name="lidar_radius" value="0.0193" />
+  <xacro:property name="lidar_height" value="0.0333" />
+
+  <xacro:property name="lidar_x" value="0.030584" />
+  <xacro:property name="lidar_y" value="0.0" />
+  <xacro:property name="lidar_z" value="0.296434" />
+
+  <!-- LD06 centre in Fusion world coordinates (the mesh frame) -->
+  <xacro:property name="lidar_mesh_x" value="0.192964" />
+
+  <xacro:macro name="ubot_lidar" params="prefix">
+
+    <link name="${prefix}lidar_link">
+      <visual>
+        <origin xyz="${-lidar_mesh_x} 0 ${-lidar_z}" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="file://$(find ubot_description)/meshes/inspection/ld06_lidar.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="black">
+          <color rgba="0.05 0.05 0.05 1"/>
+        </material>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${lidar_radius}" length="${lidar_height}"/>
+        </geometry>
+      </collision>
+
+      <inertial>
+        <origin xyz="-0.000095 0.000011 -0.001380" rpy="0 0 0"/>
+        <mass value="${lidar_mass}"/>
+        <inertia ixx="0.000008" ixy="0.0" ixz="0.0" iyy="0.000008" iyz="0.0" izz="0.000009"/>
+      </inertial>
+    </link>
+
+    <joint name="${prefix}lidar_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}lidar_link"/>
+      <origin xyz="${lidar_x} ${lidar_y} ${lidar_z}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+</robot>

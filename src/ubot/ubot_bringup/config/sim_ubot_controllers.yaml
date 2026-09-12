@@ -1,0 +1,73 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # Hz
+    use_sim_time: true
+
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    imu_sensor_broadcaster:
+      type: imu_sensor_broadcaster/IMUSensorBroadcaster
+
+diff_drive_controller:
+  ros__parameters:
+    # Front wheels only — matches the real robot, where only the front motors are
+    # commanded and only they carry encoders. The rear wheels are passive followers.
+    left_wheel_names: ["front_left_wheel_joint"]
+    right_wheel_names: ["front_right_wheel_joint"]
+
+    # NOT the geometric track (0.2264 m). A 4-wheel skid-steer must scrub its tyres to
+    # turn, so it rotates slower than the geometry predicts and the odometry needs the
+    # EFFECTIVE separation. Deliberately the same value as the real robot
+    # (ubot_controllers.yaml / diff_controller.h): the sim's lateral wheel friction
+    # (mu2 = 0.12 in ubot_gazebo.urdf.xacro) was tuned so this value is correct in sim too.
+    # Verified against Gazebo ground truth: actual/commanded yaw rate = 1.001.
+    # If the real robot is recalibrated to a different value, retune mu2 rather than
+    # letting sim and real drift apart (higher mu2 = less scrub = larger effective
+    # separation; mu2 = 1.1 locks the wheels entirely).
+    wheel_separation: 0.264204
+    wheel_radius: 0.0325   # wheel_radius (Inspection Robot 01 CAD)
+
+    # Odometry settings
+    publish_rate: 50.0
+    odom_frame_id: odom
+    base_frame_id: base_footprint
+    enable_odom_tf: false
+
+
+    # Add these to prevent resets
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.03]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.03]
+    open_loop: false
+
+    # Constraints for smooth movement
+    linear:
+      x:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        min_velocity: -1.0
+    angular:
+      z:
+        has_velocity_limits: true
+        max_velocity: 2.0
+        min_velocity: -2.0
+
+joint_state_broadcaster:
+  ros__parameters:
+    use_sim_time: true
+    # ADD THESE NEW LINES BELOW:
+    qos_overrides:
+      /joint_states:
+        publisher:
+          durability: volatile
+          reliability: reliable
+
+          
+imu_sensor_broadcaster:
+  ros__parameters:
+    frame_id: imu_link
+    sensor_name: imu_sensor
+    

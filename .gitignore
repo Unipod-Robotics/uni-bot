@@ -1,6 +1,15 @@
+# colcon build artefacts
 build/
 install/
 log/
-__pycache__/
-*.py[cod]
-.vscode/
+
+# editor / OS noise
+*.swp
+*~
+.DS_Store
+
+# third-party sources - restore with: vcs import src < src/ubot/ubot.repos
+/src/bno055/
+/src/ldlidar_stl_ros2/
+/src/sllidar_ros2/
+/src/topic_based_ros2_control/
