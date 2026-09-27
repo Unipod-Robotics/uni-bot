@@ -1,8 +1,8 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import TimerAction, IncludeLaunchDescription
-from launch.substitutions import Command, PathJoinSubstitution
+from launch.actions import TimerAction, IncludeLaunchDescription, DeclareLaunchArgument
+from launch.substitutions import Command, PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -138,22 +138,32 @@ def generate_launch_description():
     )
 
 
-    # BNO055 IMU — I2C, publishes /bno055/imu with frame_id imu_link
-    bno055_node = Node(
-        package='bno055',
-        executable='bno055',
-        name='bno055',
-        output='screen',
-        parameters=[os.path.join(pkg_bringup, 'config', 'bno055_params.yaml')]
+    # EKF parameter file in ubot_bringup/config:
+    #   real_ekf.yaml          wheel odometry + IMU yaw rate (default)
+    #   real_ekf_imu_yaw.yaml  wheel velocities + IMU absolute yaw (magnetometer) and yaw rate
+    ekf_config_arg = DeclareLaunchArgument(
+        'ekf_config',
+        default_value='real_ekf.yaml',
+        description='EKF parameter file in ubot_bringup/config'
     )
 
-    # EKF — fuses wheel odometry with IMU yaw rate into /odometry/filtered
+    # BNO085 IMU — I2C, publishes /imu with frame_id imu_link
+    bno085_node = Node(
+        package='bno08x_driver',
+        executable='bno08x_driver',
+        name='bno08x_driver',
+        output='screen',
+        parameters=[os.path.join(pkg_bringup, 'config', 'bno085_params.yaml')]
+    )
+
+    # EKF — fuses wheel odometry with the IMU into /odometry/filtered and publishes
+    # odom -> base_footprint (the diff drive controller's odom TF is disabled)
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
         name='ekf_filter_node',
         output='screen',
-        parameters=[os.path.join(pkg_bringup, 'config', 'real_ekf.yaml')]
+        parameters=[PathJoinSubstitution([pkg_bringup, 'config', LaunchConfiguration('ekf_config')])]
     )
 
     oak_driver = IncludeLaunchDescription(
@@ -184,6 +194,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        ekf_config_arg,
         node_robot_state_publisher,
         controller_manager,
         joint_state_broadcaster_spawner,
@@ -191,6 +202,6 @@ def generate_launch_description():
         twist_stamper,
         lidar_node,
         # diag_publisher,
-        # bno055_node,
-        # ekf_node,
+        bno085_node,
+        ekf_node,
     ])

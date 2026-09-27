@@ -79,7 +79,9 @@ diff_drive_controller:
     # ── Odometry ─────────────────────────────────────────────────
     odom_frame_id:  odom
     base_frame_id:  base_footprint
-    enable_odom_tf: true
+    # The EKF (robot_localization) publishes odom -> base_footprint on the real robot,
+    # so the controller must not publish it too.
+    enable_odom_tf: false
     open_loop:      false   # MUST be false — use encoder feedback, not cmd_vel
 
     # How often the controller publishes /odom and /tf.
