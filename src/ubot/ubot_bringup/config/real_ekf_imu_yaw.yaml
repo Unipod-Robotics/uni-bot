@@ -1,3 +1,11 @@
+# Variant of real_ekf.yaml where the IMU supplies absolute yaw (heading).
+#
+# With publish.imu.orientation_source: rotation_vector (bno085_params.yaml), the IMU's
+# yaw is referenced to magnetic north, so it does not drift the way integrated wheel
+# yaw does. The magnetometer can be pulled off by motors and steel indoors, so only use
+# this once experiment E7 shows the heading holds up on the robot.
+#
+# Select with: ros2 launch ubot_bringup real_robot.launch.py ekf_config:=real_ekf_imu_yaw.yaml
 ekf_filter_node:
   ros__parameters:
 
@@ -11,11 +19,8 @@ ekf_filter_node:
 
     publish_tf: true
 
-    # Wheel odometry: velocities only (vx, vyaw).
-    # Fusing the wheels' absolute x and yaw as well made the wheel heading override the
-    # IMU: in a test with 10 % wheel slip, fused yaw followed the wheels exactly and the
-    # IMU yaw rate had no effect on heading. With velocities only, heading is integrated
-    # from both yaw rates, weighted by their covariances.
+    # Wheel odometry: velocities only (vx, vyaw). Wheel yaw is not fused, so it does
+    # not compete with the IMU's absolute heading.
     odom0: /diff_drive_controller/odom
     odom0_config: [false, false, false,
                    false, false, false,
@@ -25,14 +30,13 @@ ekf_filter_node:
     odom0_differential: false
     odom0_relative: false
 
-    # IMU (BNO085, bno08x_driver): fuse yaw angular velocity only.
-    # Heading is integrated from the IMU and wheel yaw rates. For absolute heading from the IMU's
-    # magnetometer, use real_ekf_imu_yaw.yaml instead.
+    # IMU: absolute yaw + yaw angular velocity
     imu0: /imu
     imu0_config: [false, false, false,
-                  false, false, false,
+                  false, false, true,
                   false, false, false,
                   false, false, true,
                   false, false, false]
     imu0_differential: false
+    imu0_relative: false
     imu0_remove_gravitational_acceleration: true

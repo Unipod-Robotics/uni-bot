@@ -1,0 +1,42 @@
+# BNO085 IMU driver (bno08x_driver, characterization-mode branch of
+# github.com/praiseorji4/bno08x_ros2_driver) for the real robot.
+# Publishes /imu (sensor_msgs/Imu) and /magnetic_field in the imu_link frame.
+bno08x_driver:
+  ros__parameters:
+    frame_id: "imu_link"
+
+    i2c:
+      enabled: true
+      bus: "/dev/i2c-1"   # Pi 5, bus clock set to 400 kHz in /boot/firmware/config.txt
+      address: "0x4A"
+
+    # Stamp each message with the time the sensor sampled it, not when the driver read it
+    timestamp:
+      use_sample_time: true
+    # Poll 4x faster than the report rate to cut buffering delay
+    poll:
+      rate_multiplier: 4
+
+    publish:
+      imu:
+        enabled: true
+        rate: 100
+        # rotation_vector: 9-axis, heading from the magnetometer (absolute yaw)
+        # game_rotation_vector: 6-axis, no magnetometer (yaw drifts)
+        orientation_source: "rotation_vector"
+      magnetic_field:
+        enabled: true
+        rate: 50
+        tesla: true
+
+    # Row-major 3x3. Zero would mean "unknown" and make the EKF treat the IMU as perfect.
+    # angular_velocity and linear_acceleration come from the E2 still test (3 h, 2026-09-27):
+    # measured per-sample variance x4, because robot_localization does not estimate gyro bias.
+    covariance:
+      # PLACEHOLDER (5 deg)^2 until E7/E8; only used by real_ekf_imu_yaw.yaml
+      orientation:         [0.0076, 0.0, 0.0,  0.0, 0.0076, 0.0,  0.0, 0.0, 0.0076]
+      # measured z 3.7e-6 (0.11 deg/s per sample) x4 = (0.0039 rad/s)^2; yaw rate is fused by every EKF config
+      angular_velocity:    [1.5e-5, 0.0, 0.0,  0.0, 1.5e-5, 0.0,  0.0, 0.0, 1.5e-5]
+      # measured up to 3.9e-4 (0.02 m/s^2 per sample) x4; not fused
+      linear_acceleration: [1.6e-3, 0.0, 0.0,  0.0, 1.6e-3, 0.0,  0.0, 0.0, 1.6e-3]
+      magnetic_field:      [0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  0.0, 0.0, 0.0]

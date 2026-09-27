@@ -7,6 +7,10 @@ repositories:
     type: git
     url: https://github.com/flynneva/bno055.git
     version: main
+  bno08x_ros2_driver:
+    type: git
+    url: https://github.com/praiseorji4/bno08x_ros2_driver.git
+    version: characterization-mode
   ldlidar_stl_ros2:
     type: git
     url: https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
