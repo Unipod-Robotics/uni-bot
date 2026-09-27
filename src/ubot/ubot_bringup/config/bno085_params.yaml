@@ -29,14 +29,14 @@ bno08x_driver:
         rate: 50
         tesla: true
 
-    # PLACEHOLDERS until the characterization results (E2 noise, E7/E8 heading) are in.
-    # Zero would mean "unknown" and make the EKF treat the IMU as perfect, so these are
-    # deliberately conservative. Row-major 3x3.
+    # Row-major 3x3. Zero would mean "unknown" and make the EKF treat the IMU as perfect.
+    # angular_velocity and linear_acceleration come from the E2 still test (3 h, 2026-09-27):
+    # measured per-sample variance x4, because robot_localization does not estimate gyro bias.
     covariance:
-      # (5 deg)^2 per axis; only yaw is used, and only by real_ekf_imu_yaw.yaml
+      # PLACEHOLDER (5 deg)^2 until E7/E8; only used by real_ekf_imu_yaw.yaml
       orientation:         [0.0076, 0.0, 0.0,  0.0, 0.0076, 0.0,  0.0, 0.0, 0.0076]
-      # (0.02 rad/s)^2 per axis; yaw rate is fused by every EKF config
-      angular_velocity:    [0.0004, 0.0, 0.0,  0.0, 0.0004, 0.0,  0.0, 0.0, 0.0004]
-      # (0.1 m/s^2)^2 per axis; not fused
-      linear_acceleration: [0.01, 0.0, 0.0,  0.0, 0.01, 0.0,  0.0, 0.0, 0.01]
+      # measured z 3.7e-6 (0.11 deg/s per sample) x4 = (0.0039 rad/s)^2; yaw rate is fused by every EKF config
+      angular_velocity:    [1.5e-5, 0.0, 0.0,  0.0, 1.5e-5, 0.0,  0.0, 0.0, 1.5e-5]
+      # measured up to 3.9e-4 (0.02 m/s^2 per sample) x4; not fused
+      linear_acceleration: [1.6e-3, 0.0, 0.0,  0.0, 1.6e-3, 0.0,  0.0, 0.0, 1.6e-3]
       magnetic_field:      [0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  0.0, 0.0, 0.0]
