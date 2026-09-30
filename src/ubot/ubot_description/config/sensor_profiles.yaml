@@ -1,0 +1,100 @@
+# Sensor profiles for the simulated 2D range sensors (single source of truth).
+#
+# ubot_gazebo.urdf.xacro reads the geometric fields (rate, samples, fov, range limits) to shape
+# the Gazebo sensor. ubot_bench's scan_model node reads the noise fields to apply a datasheet
+# noise model to the clean simulated scan, because Gazebo only supports constant Gaussian noise.
+# `gz_stddev` is the constant approximation used when the benchmark noise model is off
+# (interactive sim.launch.py).
+#
+# Noise model per beam: r_meas = r_true + bias + N(0, sigma(r)), where
+#   sigma(r) = piecewise constant `sigma_bands` [[r_upper, sigma], ...]  (metres)
+#            | `sigma_rel` * r                                           (fraction of range)
+#            | `sigma_quad` * r^2                                        (stereo depth)
+#   bias     = one draw per run, U(-bias_bound(r), +bias_bound(r)), constant within the run
+#              (a calibration offset, not per-beam noise).
+# Where a datasheet gives only an accuracy bound A (no sigma), sigma = A/2 is used, i.e. A is
+# read as a ~95% bound. Every such assumption is marked ASSUMED.
+#
+# price_usd: APPROXIMATE street price (Sep 2026) for the cost axis (RQ4). Verify each against
+#            a dated vendor quote before publication and cite it in the paper.
+
+lidar_ref_ust10lx:
+  label: "REF Hokuyo UST-10LX"
+  kind: lidar
+  # Hokuyo UST-10LX specification sheet (hokuyo-aut.jp/dl/UST-10LX_Specification.pdf):
+  # 0.06-10 m (white Kent sheet), 270 deg, 0.25 deg, 25 ms/scan (40 Hz), accuracy +-40 mm.
+  rate_hz: 40.0
+  samples: 1081
+  fov_deg: 270.0
+  range_min: 0.06
+  range_max: 10.0
+  sigma_bands: [[10.0, 0.020]]        # ASSUMED: +-40 mm accuracy read as 2 sigma
+  bias_bands: [[10.0, 0.0]]
+  gz_stddev: 0.020
+  price_usd: 1600
+
+lidar_ms200:
+  label: "Oradar MS200"
+  kind: lidar
+  # Oradar MS200 dToF Lidar user manual PD-P2117008 A0 (2023-06), Table 2-1:
+  # 0.03-12 m @90% reflectivity, 360 deg, 4500 points/s, 5-15 Hz (default 10), 0.8 deg @10 Hz,
+  # precision (1 sigma, typ.) <=4 mm [0.03,2) m, <=15 mm [2,12] m;
+  # accuracy (typ.) +-10 mm [0.03,2) m, +-20 mm [2,12] m.
+  rate_hz: 10.0
+  samples: 450
+  fov_deg: 360.0
+  range_min: 0.03
+  range_max: 12.0
+  sigma_bands: [[2.0, 0.004], [12.0, 0.015]]
+  bias_bands: [[2.0, 0.010], [12.0, 0.020]]
+  gz_stddev: 0.012
+  price_usd: 60
+
+lidar_ld06:
+  label: "LDROBOT LD06"
+  kind: lidar
+  # LDROBOT LD06 datasheet: 0.02-12 m (70% reflectivity), 360 deg, 4500 Hz sampling,
+  # 5-13 Hz scan (typ. 10 Hz), accuracy +-45 mm for 0.3-12 m. Below 0.3 m not specified.
+  rate_hz: 10.0
+  samples: 450
+  fov_deg: 360.0
+  range_min: 0.02
+  range_max: 12.0
+  sigma_bands: [[12.0, 0.0225]]       # ASSUMED: +-45 mm accuracy read as 2 sigma
+  bias_bands: [[12.0, 0.0]]           # accuracy already folded into sigma
+  gz_stddev: 0.0225
+  price_usd: 80
+
+lidar_rplidar_a1:
+  label: "Slamtec RPLIDAR A1M8"
+  kind: lidar
+  # Slamtec RPLIDAR A1M8 datasheet (LD108 v2.3): 0.15-12 m, 360 deg, sample rate >=8000 Hz,
+  # scan 5.5 Hz typical (up to 10 Hz), angular resolution <=1 deg, distance resolution <1%.
+  # samples = 8000 / 5.5 = 1454; verify against the real unit at bring-up (PROTOCOL.md).
+  rate_hz: 5.5
+  samples: 1454
+  fov_deg: 360.0
+  range_min: 0.15
+  range_max: 12.0
+  sigma_rel: 0.005                    # ASSUMED: <1% of range read as 2 sigma
+  bias_bands: [[12.0, 0.0]]
+  gz_stddev: 0.02
+  price_usd: 99
+
+depth_oakd_lite:
+  label: "Luxonis OAK-D Lite (stereo depth -> scan)"
+  kind: depth
+  # Luxonis OAK-D Lite docs: stereo HFOV 73 deg, baseline 75 mm, ideal range 0.4-8 m,
+  # MinZ ~0.2 m (480P + extended disparity), depth error <2% below 4 m and <4% at 4-7 m.
+  # Stereo error grows ~ z^2; sigma = k z^2 with k fitted so 2 sigma = 2% at 4 m (k = 0.0025),
+  # which gives 3.5% at 7 m, inside the <4% spec.
+  rate_hz: 15.0
+  width: 640
+  height: 480
+  hfov_deg: 73.0
+  range_min: 0.20
+  range_max: 8.0
+  sigma_quad: 0.0025
+  bias_bands: [[8.0, 0.0]]
+  gz_stddev: 0.02
+  price_usd: 149

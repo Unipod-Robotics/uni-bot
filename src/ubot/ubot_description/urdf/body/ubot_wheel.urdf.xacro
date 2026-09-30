@@ -61,10 +61,18 @@
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="ubot_wheel" params="prefix">
+  <!--
+    rear_mimic: true on the real robot (the ESP32 mirrors each front command to the rear motor;
+    the rear joints are mimic joints). In Gazebo it must be false: gz_ros2_control's mimic handling
+    only tracks the rear joint position and delivers no drive torque, so the rear wheels roll free,
+    the simulated robot is front-wheel drive, and an in-place turn pivots about the front axle
+    (0.25 m of base translation per 180 deg, measured). In simulation the rear wheels get their own
+    velocity command interfaces instead and the diff_drive_controller drives all four.
+  -->
+  <xacro:macro name="ubot_wheel" params="prefix rear_mimic:=true">
     <xacro:ubot_single_wheel prefix="${prefix}" name="front_left"  x_sign="1"  y_sign="1"  mesh="wheel_front_left"  mesh_x="0.28988" mesh_y="0.1132"/>
     <xacro:ubot_single_wheel prefix="${prefix}" name="front_right" x_sign="1"  y_sign="-1" mesh="wheel_front_right" mesh_x="0.28988" mesh_y="-0.1132"/>
-    <xacro:ubot_single_wheel prefix="${prefix}" name="rear_left"   x_sign="-1" y_sign="1"  mesh="wheel_rear_left"   mesh_x="0.03488" mesh_y="0.1132"  mimics="front_left_wheel_joint"/>
-    <xacro:ubot_single_wheel prefix="${prefix}" name="rear_right"  x_sign="-1" y_sign="-1" mesh="wheel_rear_right"  mesh_x="0.03488" mesh_y="-0.1132" mimics="front_right_wheel_joint"/>
+    <xacro:ubot_single_wheel prefix="${prefix}" name="rear_left"   x_sign="-1" y_sign="1"  mesh="wheel_rear_left"   mesh_x="0.03488" mesh_y="0.1132"  mimics="${'front_left_wheel_joint' if rear_mimic else ''}"/>
+    <xacro:ubot_single_wheel prefix="${prefix}" name="rear_right"  x_sign="-1" y_sign="-1" mesh="wheel_rear_right"  mesh_x="0.03488" mesh_y="-0.1132" mimics="${'front_right_wheel_joint' if rear_mimic else ''}"/>
   </xacro:macro>
 </robot>

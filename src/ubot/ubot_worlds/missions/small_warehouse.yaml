@@ -1,0 +1,6 @@
+# Mission definition for small_warehouse (generated sections are rewritten by ubot_bench make_missions).
+world: small_warehouse
+# Axis-aligned box [xmin, xmax, ymin, ymax] (m) that contains the navigable interior; limits
+# ground-truth scanner positions and generated goals.
+bounds: [-10.0, 14.0, -12.0, 7.0]
+spawn: {x: 0.0, y: 0.0, yaw: 0.0}

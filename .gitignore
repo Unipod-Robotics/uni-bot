@@ -13,3 +13,5 @@ log/
 /src/ldlidar_stl_ros2/
 /src/sllidar_ros2/
 /src/topic_based_ros2_control/
+.venv-bench/
+bench_results/

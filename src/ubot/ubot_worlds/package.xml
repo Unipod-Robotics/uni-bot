@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ubot_worlds</name>
+  <version>0.1.0</version>
+  <description>
+    Gazebo Harmonic worlds for the ubot low-cost navigation benchmark: a replica of the physical
+    5x5 m arena and the AWS RoboMaker small house, bookstore and small warehouse (Harmonic ports),
+    each with condition overlays (glass, dynamic obstacles, low light), mission definitions and
+    ground-truth occupancy maps. Run scripts/fetch_models.sh before building.
+  </description>
+  <maintainer email="praiseorji4@gmail.com">Onyenweaku Chibueze</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

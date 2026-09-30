@@ -1,0 +1,10 @@
+# RQ3: where it breaks. Conditions C1 glass, C2 dynamic, C3 degraded for all stacks; C4 low_light
+# applies to the camera stack only (the orchestrator skips it for LiDARs).
+# Worlds: the arena (small, controlled) and the house (cluttered, doorways).
+name: sim_degradation
+worlds: [arena_5x5, small_house]
+stacks: [REF, MS200, LD06, A1, OAKD]
+conditions: [glass, dynamic, degraded, low_light]
+seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+parallel: 3
+trial_timeout_s: 7200

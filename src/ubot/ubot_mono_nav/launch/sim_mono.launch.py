@@ -19,12 +19,10 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (AppendEnvironmentVariable, DeclareLaunchArgument,
-                            IncludeLaunchDescription, RegisterEventHandler)
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import (Command, LaunchConfiguration, PathJoinSubstitution,
-                                  TextSubstitution)
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from nav2_common.launch import RewrittenYaml
@@ -47,29 +45,19 @@ def generate_launch_description():
         output='screen',
         parameters=[{'robot_description': robot_description_config, 'use_sim_time': True}])
 
-    # Same world handling as ubot_bringup/launch/sim.launch.py: 'world' names both the
-    # .sdf in ubot_bringup/worlds and the <world name> inside it, because the spawner
-    # addresses the world by name. Defaults to the indoor apartment, spawned in the
-    # right-hand hall facing down the corridor.
+    # Worlds come from ubot_worlds (same as ubot_bringup/launch/sim.launch.py). The spawner
+    # addresses the world by name, which ubot_worlds guarantees equals the world arg.
     world = LaunchConfiguration('world')
     spawn_x = LaunchConfiguration('spawn_x')
     spawn_y = LaunchConfiguration('spawn_y')
     spawn_z = LaunchConfiguration('spawn_z')
     spawn_yaw = LaunchConfiguration('spawn_yaw')
 
-    world_file = PathJoinSubstitution([
-        pkg_bringup, 'worlds', [world, TextSubstitution(text='.sdf')],
-    ])
-
-    # model://apartment lives in ubot_bringup/models; Gazebo needs the CONTAINING dir.
-    gz_resource_path = AppendEnvironmentVariable(
-        'GZ_SIM_RESOURCE_PATH', os.path.join(pkg_bringup, 'models'))
-
     gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            [os.path.join(get_package_share_directory('ros_gz_sim'), 'launch',
-                          'gz_sim.launch.py')]),
-        launch_arguments={'gz_args': [TextSubstitution(text='-r -v 4 '), world_file]}.items())
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('ubot_worlds'), 'launch', 'gz_world.launch.py')),
+        launch_arguments={'world': world,
+                          'condition': LaunchConfiguration('condition')}.items())
 
     bridge = Node(
         package='ros_gz_bridge', executable='parameter_bridge',
@@ -159,13 +147,16 @@ def generate_launch_description():
         parameters=[{'use_sim_time': True}])
 
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='apartment',
-                              description='world .sdf in ubot_bringup/worlds AND its <world name>'),
-        DeclareLaunchArgument('spawn_x', default_value='5.0'),
+        DeclareLaunchArgument('world', default_value='small_house',
+                              description='ubot_worlds world: arena_5x5 | small_house | '
+                                          'bookstore | small_warehouse'),
+        DeclareLaunchArgument('condition', default_value='nominal',
+                              description='nominal | glass | dynamic | degraded | low_light'),
+        # Defaults match ubot_worlds/missions/small_house.yaml; set them for other worlds.
+        DeclareLaunchArgument('spawn_x', default_value='0.0'),
         DeclareLaunchArgument('spawn_y', default_value='0.0'),
         DeclareLaunchArgument('spawn_z', default_value='0.1'),
-        DeclareLaunchArgument('spawn_yaw', default_value='1.5708'),
-        gz_resource_path,
+        DeclareLaunchArgument('spawn_yaw', default_value='0.0'),
         DeclareLaunchArgument(
             'rviz_config',
             default_value=os.path.join(pkg_description, 'rviz', 'slam.rviz'),

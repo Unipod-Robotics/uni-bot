@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <xacro:macro name="ubot_gazebo" params="prefix">
+    <xacro:macro name="ubot_gazebo" params="prefix sensor_profile:=lidar_ms200 bench:=false">
         <gazebo>
             <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
             <parameters>$(find ubot_bringup)/config/sim_ubot_controllers.yaml</parameters>
@@ -17,36 +17,77 @@
         </gazebo>     
 
 
-        <!-- FIXED LIDAR CONFIGURATION -->
+        <!--
+          2D range sensor, shaped by config/sensor_profiles.yaml[sensor_profile].
+
+          bench:=false  Gazebo applies constant Gaussian noise (gz_stddev) and publishes /scan
+                        (interactive sim.launch.py).
+          bench:=true   Gazebo publishes a clean scan on /scan_raw; ubot_bench's scan_model node
+                        applies the datasheet noise model and publishes /scan.
+          A depth-kind profile (OAK-D Lite) has no LiDAR at all; /scan comes from the depth image.
+
+          visibility_mask 0xFFFFFFFD hides visuals flagged 2 (glass in ubot_worlds), so the LiDAR
+          and depth camera see through glass as real ones largely do.
+        -->
+        <xacro:property name="bench_on" value="${str(bench).lower() in ('true', '1')}"/>
+        <xacro:property name="prof" value="${xacro.load_yaml('$(find ubot_description)/config/sensor_profiles.yaml')[sensor_profile]}"/>
+        <xacro:if value="${prof['kind'] == 'lidar'}">
         <gazebo reference="${prefix}lidar_link">
             <sensor name="${prefix}lidar_sensor" type="gpu_lidar">
-                <topic>/scan</topic> 
-                <update_rate>10</update_rate>
+                <topic>${'/scan_raw' if bench_on else '/scan'}</topic>
+                <update_rate>${prof['rate_hz']}</update_rate>
                 <always_on>true</always_on>
-                <visualize>true</visualize>
+                <visualize>${'false' if bench_on else 'true'}</visualize>
                 <lidar>
                     <scan>
                         <horizontal>
-                            <samples>720</samples>
+                            <samples>${prof['samples']}</samples>
                             <resolution>1</resolution>
-                            <min_angle>-3.14159</min_angle>
-                            <max_angle>3.14159</max_angle>
+                            <min_angle>${-radians(prof['fov_deg']) / 2 + (radians(prof['fov_deg']) / prof['samples'] / 2 if prof['fov_deg'] == 360.0 else 0.0)}</min_angle>
+                            <max_angle>${radians(prof['fov_deg']) / 2 - (radians(prof['fov_deg']) / prof['samples'] / 2 if prof['fov_deg'] == 360.0 else 0.0)}</max_angle>
                         </horizontal>
                     </scan>
                     <range>
-                        <min>0.2</min> 
-                        <max>30.0</max>
-                        <resolution>0.01</resolution>
+                        <min>${prof['range_min']}</min>
+                        <max>${prof['range_max']}</max>
+                        <resolution>0.001</resolution>
                     </range>
+                    <xacro:unless value="${bench_on}">
                     <noise>
                         <type>gaussian</type>
                         <mean>0.0</mean>
-                        <stddev>0.01</stddev>
+                        <stddev>${prof['gz_stddev']}</stddev>
                     </noise>
+                    </xacro:unless>
+                    <visibility_mask>4294967293</visibility_mask>
                 </lidar>
                 <gz_frame_id>${prefix}lidar_link</gz_frame_id>
             </sensor>
         </gazebo>
+        </xacro:if>
+
+
+        <!--
+          Benchmark bumper: a contact sensor on every chassis collision (the wheels are excluded,
+          they touch the floor by design). URDF->SDF lumps base_link into base_footprint and
+          renames its collisions, hence the generated names below. Published on the gz topic
+          /bench/contacts; ubot_bench gt_publisher turns it into /ground_truth/contacts.
+        -->
+        <xacro:if value="${bench_on}">
+        <gazebo reference="${prefix}base_link">
+            <sensor name="${prefix}bumper" type="contact">
+                <always_on>true</always_on>
+                <update_rate>50</update_rate>
+                <topic>/bench/contacts</topic>
+                <contact>
+                    <collision>${prefix}base_footprint_fixed_joint_lump__base_link_collision</collision>
+                    <collision>${prefix}base_footprint_fixed_joint_lump__base_link_collision_1</collision>
+                    <collision>${prefix}base_footprint_fixed_joint_lump__base_link_collision_2</collision>
+                    <collision>${prefix}base_footprint_fixed_joint_lump__lidar_link_collision_3</collision>
+                </contact>
+            </sensor>
+        </gazebo>
+        </xacro:if>
 
 
         <!-- RGB-D CAMERA SENSOR - FIXED -->
@@ -75,10 +116,11 @@
                     </noise>
                     <depth_camera>
                         <clip>
-                            <near>0.1</near>
-                            <far>10.0</far>
+                            <near>0.20</near>   <!-- OAK-D Lite MinZ, extended disparity -->
+                            <far>8.0</far>      <!-- OAK-D Lite ideal depth range -->
                         </clip>
                     </depth_camera>
+                    <visibility_mask>4294967293</visibility_mask>
                 </camera>
 
                 <gz_frame_id>${prefix}camera_depth_frame</gz_frame_id>
@@ -179,7 +221,12 @@
         <!--
           Skid-steer friction.
 
-          mu1 acts along fdir1 (the rolling direction, +X) and mu2 across it (sideways).
+          fdir1 is expressed in the collision frame, which spins with the wheel, so it must be
+          the one direction that does not rotate: the axle (collision +Z, the cylinder axis).
+          With fdir1 = 1 0 0 the high/low friction directions would swap as each wheel turns.
+          mu1 therefore acts ACROSS the tyre (sideways) and mu2 ALONG it (rolling).
+          (The front-axle pivot of in-place turns is load distribution, not friction direction:
+          see ubot_wheel.urdf.xacro.)
           A 4-wheel skid-steer can only turn by scrubbing its tyres sideways, so mu2 MUST
           be low. With mu1 = mu2 = 1.1 the robot is effectively bolted to the floor: the
           wheels stall while the odometry keeps integrating, so the robot spins in RViz
@@ -187,13 +234,13 @@
         -->
         <xacro:macro name="wheel_gazebo" params="wheel_name">
             <gazebo reference="${prefix}${wheel_name}_link">
-                <mu1>1.0</mu1>
-                <mu2>0.50</mu2>
+                <mu1>0.50</mu1>   <!-- sideways (along fdir1 = axle) -->
+                <mu2>1.0</mu2>    <!-- rolling direction -->
                 <kp>1000000.0</kp>
                 <kd>10.0</kd>
                 <minDepth>0.001</minDepth>
                 <maxVel>0.1</maxVel>
-                <fdir1>1 0 0</fdir1>
+                <fdir1>0 0 1</fdir1>
                 <material>Gazebo/Grey</material>
             </gazebo>
         </xacro:macro>

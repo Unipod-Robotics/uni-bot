@@ -1,0 +1,9 @@
+# RQ1/RQ2/RQ4 core matrix: every stack in every world, nominal condition.
+# 5 stacks x 4 worlds x 20 seeds x 2 phases = 800 trials.
+name: sim_core
+worlds: [arena_5x5, small_house, bookstore, small_warehouse]
+stacks: [REF, MS200, LD06, A1, OAKD]
+conditions: [nominal]
+seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+parallel: 3
+trial_timeout_s: 7200

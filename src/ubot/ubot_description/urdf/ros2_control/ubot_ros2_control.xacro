@@ -7,8 +7,9 @@
     - The Gazebo sim plugin (gz_ros2_control/GazeboSimSystem)
 
   Drive configuration: 4WD, front-wheel encoders only.
-  Rear joints carry state interfaces only (no command interface on real hw).
-  In simulation all 4 joints carry command + state interfaces.
+  Real hardware: rear joints carry state interfaces only (the ESP32 mirrors the front command).
+  Simulation: all 4 joints carry command + state interfaces and the diff_drive_controller drives
+  all four (see ubot_wheel.urdf.xacro rear_mimic for why mimic joints do not work in Gazebo).
 
   IMPORTANT — joint structure rules:
     <joint> tags MUST be siblings of <hardware>, not children of it.
@@ -88,12 +89,18 @@
         a command interface is needed there.
       -->
       <joint name="${prefix}rear_left_wheel_joint">
+        <xacro:if value="${use_gazebo}">
+          <command_interface name="velocity"/>
+        </xacro:if>
         <state_interface name="position"/>
         <state_interface name="velocity"/>
       </joint>
 
       <!-- Rear right — same as rear left -->
       <joint name="${prefix}rear_right_wheel_joint">
+        <xacro:if value="${use_gazebo}">
+          <command_interface name="velocity"/>
+        </xacro:if>
         <state_interface name="position"/>
         <state_interface name="velocity"/>
       </joint>

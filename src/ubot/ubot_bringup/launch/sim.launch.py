@@ -1,10 +1,11 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction,
+                            RegisterEventHandler)
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -16,7 +17,7 @@ def generate_launch_description():
         Command([
             'xacro ',
             os.path.join(pkg_description, 'urdf', 'body', 'ubot_robot.urdf.xacro'),
-            ' use_gazebo:=true'
+            ' use_gazebo:=true sensor_profile:=', LaunchConfiguration('sensor_profile'),
         ]),
         value_type=str
     )
@@ -31,18 +32,12 @@ def generate_launch_description():
         }]
     )
     
-    # 2. Gazebo
-    world_file = os.path.join(
-        get_package_share_directory('ubot_bringup'),
-        'worlds',
-        'basic.sdf'
-    )
-
-    # 2. Modify the gazebo launch description
+    # 2. Gazebo on a ubot_worlds benchmark world (world:=, condition:=)
     gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')]),
-        launch_arguments={'gz_args': f'-r -v 4 {world_file}'}.items(),
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('ubot_worlds'), 'launch', 'gz_world.launch.py')),
+        launch_arguments={'world': LaunchConfiguration('world'),
+                          'condition': LaunchConfiguration('condition')}.items(),
     )
 
 
@@ -75,19 +70,29 @@ def generate_launch_description():
         parameters=[{'use_sim_time': True}]
     )
     
-    # 4. Spawn Robot Entity
-    spawn_entity = Node(
-        package='ros_gz_sim',
-        executable='create',
-        output='screen',
-        arguments=[
-            '-topic', 'robot_description', 
-            '-name', 'ubot',
-            '-world', 'sensors', 
-            '-z', '0.1'
-        ],
-    )
-    
+    # 4. Spawn Robot Entity at the world's mission spawn pose (worlds are addressed by name)
+    def make_spawn(context):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('gz_world', os.path.join(
+            get_package_share_directory('ubot_worlds'), 'launch', 'gz_world.launch.py'))
+        gz_world = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gz_world)
+        world = LaunchConfiguration('world').perform(context)
+        x, y, yaw = gz_world.spawn_pose(world)
+        spawn = Node(
+            package='ros_gz_sim',
+            executable='create',
+            output='screen',
+            arguments=['-topic', 'robot_description', '-name', 'ubot', '-world', world,
+                       '-x', str(x), '-y', str(y), '-z', '0.1', '-Y', str(yaw)],
+        )
+        # Controllers load once the robot exists in Gazebo.
+        return [spawn, RegisterEventHandler(event_handler=OnProcessExit(
+            target_action=spawn,
+            on_exit=[load_joint_state_broadcaster, load_diff_drive_controller]))]
+
+    spawn_entity = OpaqueFunction(function=make_spawn)
+
     # 5. Controller Spawners
     load_joint_state_broadcaster = Node(
         package="controller_manager",
@@ -188,17 +193,18 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('world', default_value='small_house',
+                              description='ubot_worlds world: arena_5x5 | small_house | '
+                                          'bookstore | small_warehouse'),
+        DeclareLaunchArgument('condition', default_value='nominal',
+                              description='nominal | glass | dynamic | degraded | low_light'),
+        DeclareLaunchArgument('sensor_profile', default_value='lidar_ms200',
+                              description='ubot_description/config/sensor_profiles.yaml entry'),
         node_robot_state_publisher,
         gazebo,
         bridge,
         spawn_entity,
         node_twist_stamper,
-        RegisterEventHandler(
-            event_handler=OnProcessExit(
-                target_action=spawn_entity,
-                on_exit=[load_joint_state_broadcaster, load_diff_drive_controller],
-            )
-        ),
         ekf_node,
         rviz_node,
         slam_toolbox,

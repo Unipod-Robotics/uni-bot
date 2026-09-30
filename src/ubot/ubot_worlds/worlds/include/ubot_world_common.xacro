@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<!--
+  Shared building blocks for every ubot benchmark world.
+
+  Every world must provide the same simulation systems and physics step, so that sensor
+  timing and dynamics are identical across worlds; only geometry and lighting differ.
+-->
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Visibility bit carried by LiDAR-transparent visuals (glass). The robot's LiDAR and depth
+       camera use a visibility_mask that excludes this bit, so they see through the glass while
+       its collision geometry still stops the robot. Must match ubot_gazebo.urdf.xacro. -->
+  <xacro:property name="glass_visibility_flag" value="2"/>
+
+  <!-- 2 ms physics step for every world: at 1 ms the bookstore (139 static mesh models) runs at
+       ~0.35x real time; at 2 ms all four worlds run at >=0.7x with a sim on the side. The step is
+       identical across worlds so dynamics never differ between them. -->
+  <xacro:macro name="ubot_world_systems" params="step:=0.002 engine:=dartsim">
+    <physics name="bench_physics" type="ignored">
+      <max_step_size>${step}</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>${int(1.0 / step)}</real_time_update_rate>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics">
+      <engine><filename>gz-physics-${engine}-plugin</filename></engine>
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <!-- SceneBroadcaster is always on: /world/<name>/pose/info is the benchmark's ground truth. -->
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <!-- No Sensors system here: the robot URDF (ubot_gazebo.urdf.xacro) loads it with ogre2, and
+         a second instance creates a duplicate render scene and crashes Ogre. -->
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+  </xacro:macro>
+
+  <!-- low_light: ambient and sun reduced ~10x, for the camera-only C4 condition. -->
+  <xacro:macro name="ubot_world_lighting" params="low_light">
+    <scene>
+      <xacro:if value="${low_light}">
+        <ambient>0.04 0.04 0.04 1</ambient>
+      </xacro:if>
+      <xacro:unless value="${low_light}">
+        <ambient>0.4 0.4 0.4 1</ambient>
+      </xacro:unless>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>false</shadows>
+      <grid>false</grid>
+      <origin_visual>false</origin_visual>
+    </scene>
+    <light name="sun" type="directional">
+      <cast_shadows>0</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <xacro:if value="${low_light}">
+        <diffuse>0.08 0.08 0.08 1</diffuse>
+        <specular>0.02 0.02 0.02 1</specular>
+      </xacro:if>
+      <xacro:unless value="${low_light}">
+        <diffuse>0.8 0.8 0.8 1</diffuse>
+        <specular>0.2 0.2 0.2 1</specular>
+      </xacro:unless>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+  </xacro:macro>
+
+  <xacro:macro name="ubot_ground_plane">
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <cast_shadows>false</cast_shadows>
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+          <material>
+            <ambient>0.55 0.55 0.55 1</ambient>
+            <diffuse>0.55 0.55 0.55 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </xacro:macro>
+
+  <!-- Glass panel (C1): full collision, visual hidden from the LiDAR / depth camera. -->
+  <xacro:macro name="ubot_glass_panel" params="name x y yaw length height:=1.2 thickness:=0.01">
+    <model name="${name}">
+      <static>true</static>
+      <pose>${x} ${y} ${height / 2} 0 0 ${yaw}</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>${length} ${thickness} ${height}</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>${length} ${thickness} ${height}</size></box></geometry>
+          <transparency>0.8</transparency>
+          <visibility_flags>${glass_visibility_flag}</visibility_flags>
+          <material>
+            <ambient>0.6 0.8 0.9 0.2</ambient>
+            <diffuse>0.6 0.8 0.9 0.2</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </xacro:macro>
+
+  <!--
+    Dynamic obstacle (C2): a person-sized box (0.4 x 0.4 x 1.7 m) that walks a closed polyline
+    at constant speed, forever, from sim time 0. Actors are rendered, so the LiDAR and cameras see
+    them, but they have no collision; clearance to them is computed from ground truth instead.
+    waypoints: list of [x, y] (closed loop back to the first point).
+  -->
+  <xacro:macro name="ubot_walker" params="name waypoints speed:=0.6">
+    <xacro:property name="pts" value="${[float(v) for xy in waypoints for v in xy]}"/>
+    <xacro:property name="n" value="${len(pts) // 2}"/>
+    <actor name="${name}">
+      <link name="body">
+        <visual name="visual">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>0.4 0.4 1.7</size></box></geometry>
+          <material>
+            <ambient>0.8 0.3 0.2 1</ambient>
+            <diffuse>0.8 0.3 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <script>
+        <loop>true</loop>
+        <delay_start>0</delay_start>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="walk">
+          <xacro:ubot_walker_points pts="${pts}" n="${n}" speed="${speed}" i="0" t="0.0"/>
+        </trajectory>
+      </script>
+    </actor>
+  </xacro:macro>
+
+  <!-- Recursive waypoint emitter: time at each point follows from segment length / speed. -->
+  <xacro:macro name="ubot_walker_points" params="pts n speed i t">
+    <xacro:property name="j" value="${(i + 1) % n}"/>
+    <xacro:property name="dx" value="${pts[2 * j] - pts[2 * (i % n)]}"/>
+    <xacro:property name="dy" value="${pts[2 * j + 1] - pts[2 * (i % n) + 1]}"/>
+    <xacro:property name="yaw" value="${atan2(dy, dx)}"/>
+    <waypoint>
+      <time>${t}</time>
+      <pose>${pts[2 * (i % n)]} ${pts[2 * (i % n) + 1]} 0 0 0 ${yaw}</pose>
+    </waypoint>
+    <xacro:if value="${i &lt; n}">
+      <xacro:ubot_walker_points pts="${pts}" n="${n}" speed="${speed}" i="${i + 1}"
+                                t="${t + sqrt(dx * dx + dy * dy) / speed}"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <!--
+    Condition geometry for a world, read from ubot_worlds/missions/<world>.yaml (the single source
+    that the analysis also reads):
+      conditions:
+        glass:   [{name, x, y, yaw, length, height}]
+        dynamic: [{name, speed, waypoints: [[x, y], ...]}]
+  -->
+  <xacro:macro name="ubot_condition_geometry" params="world condition">
+    <xacro:property name="cond_spec"
+        value="${xacro.load_yaml('$(find ubot_worlds)/missions/' + world + '.yaml').get('conditions', dict())}"/>
+    <xacro:if value="${condition == 'glass'}">
+      <xacro:ubot_glass_list panes="${cond_spec.get('glass', [])}" i="0"/>
+    </xacro:if>
+    <xacro:if value="${condition == 'dynamic'}">
+      <xacro:ubot_walker_list walkers="${cond_spec.get('dynamic', [])}" i="0"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <xacro:macro name="ubot_glass_list" params="panes i">
+    <xacro:if value="${i &lt; len(panes)}">
+      <xacro:property name="g" value="${panes[i]}"/>
+      <xacro:ubot_glass_panel name="${g['name']}" x="${g['x']}" y="${g['y']}" yaw="${g['yaw']}"
+                              length="${g['length']}" height="${g.get('height', 1.2)}"/>
+      <xacro:ubot_glass_list panes="${panes}" i="${i + 1}"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <xacro:macro name="ubot_walker_list" params="walkers i">
+    <xacro:if value="${i &lt; len(walkers)}">
+      <xacro:property name="w" value="${walkers[i]}"/>
+      <xacro:ubot_walker name="${w['name']}" waypoints="${w['waypoints']}" speed="${w.get('speed', 0.6)}"/>
+      <xacro:ubot_walker_list walkers="${walkers}" i="${i + 1}"/>
+    </xacro:if>
+  </xacro:macro>
+</sdf>

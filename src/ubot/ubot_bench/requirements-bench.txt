@@ -1,0 +1,7 @@
+# Python analysis dependencies not packaged by ROS/apt. Install into the benchmark venv:
+#   python3 -m venv --system-site-packages ~/uni-bot/.venv-bench
+#   ~/uni-bot/.venv-bench/bin/pip install -r requirements-bench.txt
+evo==1.31.1
+statsmodels>=0.14
+pandas>=2.1
+psutil>=5.9

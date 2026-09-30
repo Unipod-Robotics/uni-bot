@@ -1,0 +1,10 @@
+# RQ5: the simulated half of the sim-to-real comparison. Same stacks, arena, conditions and run
+# count as the real campaign (PROTOCOL.md, "Real-robot campaign"), so rankings and gaps can be
+# compared directly. REF is included to anchor the sim-only reference.
+name: sim_to_real
+worlds: [arena_5x5]
+stacks: [REF, MS200, LD06, A1, OAKD]
+conditions: [nominal, glass, dynamic]
+seeds: [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120]
+parallel: 3
+trial_timeout_s: 5400

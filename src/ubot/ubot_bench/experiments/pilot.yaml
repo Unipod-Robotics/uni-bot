@@ -1,0 +1,9 @@
+# Pilot: proves the pipeline end to end and gives the variance estimate for the power check
+# (PROTOCOL.md, "Sample size"). Not part of the reported results.
+name: pilot
+worlds: [arena_5x5, small_house]
+stacks: [REF, MS200]
+conditions: [nominal]
+seeds: [1, 2, 3]
+parallel: 2
+trial_timeout_s: 5400

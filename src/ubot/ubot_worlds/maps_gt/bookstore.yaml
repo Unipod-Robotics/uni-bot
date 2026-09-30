@@ -1,0 +1,7 @@
+free_thresh: 0.25
+image: bookstore.pgm
+mode: trinary
+negate: 0
+occupied_thresh: 0.65
+origin: [-10.5, -9.5, 0.0]
+resolution: 0.05

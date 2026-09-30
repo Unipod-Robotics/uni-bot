@@ -6,6 +6,10 @@
     <xacro:arg name="robot_name" default="ubot_robot"/>
     <xacro:arg name="prefix" default=""/>
     <xacro:arg name="use_gazebo" default="false"/>
+    <!-- Simulated range sensor (ubot_description/config/sensor_profiles.yaml) and whether the
+         benchmark noise pipeline (ubot_bench scan_model) replaces Gazebo's own noise. -->
+    <xacro:arg name="sensor_profile" default="lidar_ms200"/>
+    <xacro:arg name="bench" default="false"/>
 
 
 
@@ -26,14 +30,14 @@
     <xacro:ubot_ros2_control prefix="$(arg prefix)" use_gazebo="$(arg use_gazebo)" />
 
     <xacro:if value="$(arg use_gazebo)">
-        <xacro:ubot_gazebo prefix="$(arg prefix)" />
+        <xacro:ubot_gazebo prefix="$(arg prefix)" sensor_profile="$(arg sensor_profile)" bench="$(arg bench)"/>
     </xacro:if>
 
     <xacro:ubot_base 
     prefix="$(arg prefix)" />
 
-    <xacro:ubot_wheel 
-    prefix="$(arg prefix)" />
+    <xacro:ubot_wheel
+    prefix="$(arg prefix)" rear_mimic="${'$(arg use_gazebo)' != 'true'}" />
 
     <xacro:ubot_lidar 
     prefix="$(arg prefix)" />

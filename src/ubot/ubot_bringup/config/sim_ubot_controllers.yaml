@@ -14,10 +14,11 @@ controller_manager:
 
 diff_drive_controller:
   ros__parameters:
-    # Front wheels only — matches the real robot, where only the front motors are
-    # commanded and only they carry encoders. The rear wheels are passive followers.
-    left_wheel_names: ["front_left_wheel_joint"]
-    right_wheel_names: ["front_right_wheel_joint"]
+    # All four wheels. The real robot commands only the front motors and its ESP32 mirrors
+    # each command to the rear motor on the same side, so all four are driven; in Gazebo that
+    # mirroring is explicit (ubot_description/urdf/body/ubot_wheel.urdf.xacro, rear_mimic).
+    left_wheel_names: ["front_left_wheel_joint", "rear_left_wheel_joint"]
+    right_wheel_names: ["front_right_wheel_joint", "rear_right_wheel_joint"]
 
     # NOT the geometric track (0.2264 m). A 4-wheel skid-steer must scrub its tyres to
     # turn, so it rotates slower than the geometry predicts and the odometry needs the

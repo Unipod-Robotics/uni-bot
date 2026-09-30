@@ -1,0 +1,8 @@
+# Smoke test of the full pipeline (orchestrator, both phases, LiDAR and depth stacks). Not data.
+name: smoke
+worlds: [arena_5x5]
+stacks: [REF, OAKD]
+conditions: [nominal]
+seeds: [1]
+parallel: 2
+trial_timeout_s: 3600

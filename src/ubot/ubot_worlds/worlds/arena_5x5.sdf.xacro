@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!--
+  arena_5x5: sim replica of the physical benchmark arena (W0). This file IS the arena spec; the
+  real arena is built to match it (see ubot_bench/docs/PROTOCOL.md, "Arena build").
+
+    Inner floor 5.0 x 5.0 m centred on the origin, x forward.
+    Walls 0.60 m tall, 0.02 m thick (e.g. hardboard panels): the LiDAR scan plane is ~0.36 m.
+    Fixed obstacles (all 0.60 m tall so every 2D sensor sees them):
+      B1 box 0.40 x 0.40 at ( 1.00,  1.00)     B2 box 0.60 x 0.30 at (-1.20,  0.60)
+      B3 box 0.40 x 0.40 at ( 0.40, -1.30)     C1 cylinder r 0.15 at (-0.40, -0.20)
+      P1 partition 1.20 x 0.02 at ( 1.60, -0.30), along y (narrow passage to the east wall)
+    Floor fiducials (visual only): 4 x 0.20 m squares at (+-2.0, +-2.0) mark the overhead-camera
+    extrinsic calibration points.
+
+  Args: condition = nominal | glass | dynamic | degraded | low_light
+-->
+<sdf version="1.9" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="condition" default="nominal"/>
+  <xacro:arg name="physics" default="dartsim"/>
+  <xacro:property name="condition" value="$(arg condition)"/>
+  <xacro:include filename="$(find ubot_worlds)/worlds/include/ubot_world_common.xacro"/>
+
+  <xacro:property name="wall_h" value="0.60"/>
+  <xacro:property name="wall_t" value="0.02"/>
+  <xacro:property name="half" value="2.5"/>
+
+  <xacro:macro name="arena_box" params="name x y sx sy yaw:=0 h:=${wall_h}">
+    <model name="${name}">
+      <static>true</static>
+      <pose>${x} ${y} ${h / 2} 0 0 ${yaw}</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>${sx} ${sy} ${h}</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>${sx} ${sy} ${h}</size></box></geometry>
+          <material><ambient>0.75 0.68 0.55 1</ambient><diffuse>0.75 0.68 0.55 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  </xacro:macro>
+
+  <xacro:macro name="floor_mark" params="name x y">
+    <model name="${name}">
+      <static>true</static>
+      <pose>${x} ${y} 0.001 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><box><size>0.20 0.20 0.001</size></box></geometry>
+          <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.05 0.05 0.05 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  </xacro:macro>
+
+  <world name="arena_5x5">
+    <xacro:ubot_world_systems engine="$(arg physics)"/>
+    <xacro:ubot_world_lighting low_light="${condition == 'low_light'}"/>
+    <xacro:ubot_ground_plane/>
+
+    <!-- Perimeter -->
+    <xacro:arena_box name="wall_north" x="0" y="${half + wall_t / 2}" sx="${2 * half + 2 * wall_t}" sy="${wall_t}"/>
+    <xacro:arena_box name="wall_south" x="0" y="${-half - wall_t / 2}" sx="${2 * half + 2 * wall_t}" sy="${wall_t}"/>
+    <xacro:arena_box name="wall_east" x="${half + wall_t / 2}" y="0" sx="${wall_t}" sy="${2 * half}"/>
+    <xacro:arena_box name="wall_west" x="${-half - wall_t / 2}" y="0" sx="${wall_t}" sy="${2 * half}"/>
+
+    <!-- Fixed obstacles -->
+    <xacro:arena_box name="B1" x="1.00" y="1.00" sx="0.40" sy="0.40"/>
+    <xacro:arena_box name="B2" x="-1.20" y="0.60" sx="0.60" sy="0.30"/>
+    <xacro:arena_box name="B3" x="0.40" y="-1.30" sx="0.40" sy="0.40"/>
+    <xacro:arena_box name="P1" x="1.60" y="-0.30" sx="0.02" sy="1.20"/>
+    <model name="C1">
+      <static>true</static>
+      <pose>-0.40 -0.20 ${wall_h / 2} 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.15</radius><length>${wall_h}</length></cylinder></geometry></collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.15</radius><length>${wall_h}</length></cylinder></geometry>
+          <material><ambient>0.3 0.4 0.6 1</ambient><diffuse>0.3 0.4 0.6 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Overhead-camera calibration marks -->
+    <xacro:floor_mark name="mark_ne" x="2.0" y="2.0"/>
+    <xacro:floor_mark name="mark_nw" x="-2.0" y="2.0"/>
+    <xacro:floor_mark name="mark_se" x="2.0" y="-2.0"/>
+    <xacro:floor_mark name="mark_sw" x="-2.0" y="-2.0"/>
+
+    <!-- C1 glass / C2 walkers: placements live in missions/arena_5x5.yaml -->
+    <xacro:ubot_condition_geometry world="arena_5x5" condition="${condition}"/>
+  </world>
+</sdf>

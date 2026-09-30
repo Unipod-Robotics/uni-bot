@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<!--
+  gt_scanner: a free-floating, collision-free, noiseless 360 deg range sensor stack used only to
+  build ground-truth occupancy maps (ubot_bench gt_map). The model origin is teleported through the
+  world at the robot's LiDAR scan-plane height (0.3627 m); three LiDARs sample 0.08, 0.22 and
+  0.3627 m above the floor. The top slice is the scan-plane map; the union of all three is the
+  traversability map (window sills, low shelves and bases that the scan plane passes over still
+  stop the robot). It carries its own Sensors system because the worlds leave that to the robot.
+-->
+<sdf version="1.9">
+  <model name="gt_scanner">
+    <static>false</static>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <link name="link">
+      <gravity>false</gravity>
+      <inertial>
+        <mass>1.0</mass>
+        <inertia><ixx>0.01</ixx><iyy>0.01</iyy><izz>0.01</izz></inertia>
+      </inertial>
+      <sensor name="gt_lidar_z08" type="gpu_lidar">
+        <pose>0 0 -0.2827 0 0 0</pose>
+        <topic>/gt_scanner/scan_z08</topic>
+        <update_rate>20</update_rate>
+        <always_on>true</always_on>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>2880</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14050</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.05</min>
+            <max>30.0</max>
+            <resolution>0.001</resolution>
+          </range>
+        </lidar>
+      </sensor>
+      <sensor name="gt_lidar_z22" type="gpu_lidar">
+        <pose>0 0 -0.1427 0 0 0</pose>
+        <topic>/gt_scanner/scan_z22</topic>
+        <update_rate>20</update_rate>
+        <always_on>true</always_on>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>2880</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14050</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.05</min>
+            <max>30.0</max>
+            <resolution>0.001</resolution>
+          </range>
+        </lidar>
+      </sensor>
+      <sensor name="gt_lidar_z36" type="gpu_lidar">
+        <pose>0 0 0.0000 0 0 0</pose>
+        <topic>/gt_scanner/scan_z36</topic>
+        <update_rate>20</update_rate>
+        <always_on>true</always_on>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>2880</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14050</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.05</min>
+            <max>30.0</max>
+            <resolution>0.001</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </link>
+  </model>
+</sdf>
