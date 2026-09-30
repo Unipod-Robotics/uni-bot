@@ -11,19 +11,22 @@ ekf_filter_node:
 
     publish_tf: true
 
-    # Wheel odometry: fuse x, y, yaw (pose) + vx, vy, vyaw (velocity)
+    # Wheel odometry: velocities only (vx, vyaw), matching real_ekf.yaml.
+    # Fusing the wheels' absolute x (but not y) and yaw corrected the pose along the odom
+    # x axis only and let the wheel heading override the IMU; after a 90 deg turn the
+    # fused pose ran 26 cm off Gazebo ground truth over a 4 m L-shaped drive.
     odom0: /diff_drive_controller/odom
-    odom0_config: [true,  false, false,   # x only, not y
-                  false, false, true,    # yaw only
-                  true,  false, false,   # vx only
-                  false, false, true,    # vyaw only
-                  false, false, false]
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
     odom0_differential: false
     odom0_relative: false
 
-    # IMU: fuse yaw orientation + angular velocity z only
-    # Avoids noisy linear accelerations in 2D mode
-    imu0: /imu/data
+    # IMU: fuse yaw angular velocity only (same topic and fields as the real robot).
+    # Avoids noisy linear accelerations in 2D mode.
+    imu0: /imu
     imu0_config: [false, false, false,
                   false, false, false,
                   false, false, false,

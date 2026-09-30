@@ -70,7 +70,6 @@ def generate_launch_description():
             ('/camera/image', '/camera/rgb/image_raw'),
             ('/camera/depth_image', '/camera/depth/image_raw'),
             ('/camera/camera_info', '/camera/rgb/camera_info'),
-            ('/imu', '/imu/data')
         ],
         output='screen',
         parameters=[{'use_sim_time': True}]

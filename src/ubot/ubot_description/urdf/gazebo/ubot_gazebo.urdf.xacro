@@ -86,7 +86,15 @@
         </gazebo>
 
 
-        <!-- IMU SENSOR (MPU 9250 simulation) -->
+        <!--
+          IMU SENSOR (BNO085 simulation)
+
+          Gyro noise matches the real BNO085: per-sample stddev 0.0019 rad/s from the E2 still
+          test (variance 3.7e-6, see bno085_params.yaml). No static bias: the BNO085 calibrates
+          its gyro on-chip, and its residual bias has not been measured yet. The old MPU-9250
+          values (stddev 0.009, bias_stddev 0.005) gave each run a random bias of up to ~0.3 deg/s,
+          which the EKF (yaw rate from IMU) integrated into several degrees of heading drift.
+        -->
         <gazebo reference="${prefix}imu_link">
             <sensor name="${prefix}imu_sensor" type="imu">
                 <topic>/imu</topic>
@@ -100,9 +108,9 @@
                         <x>
                             <noise type="gaussian">
                                 <mean>0.0</mean>
-                                <stddev>0.009</stddev>
-                                <bias_mean>0.00075</bias_mean>
-                                <bias_stddev>0.005</bias_stddev>
+                                <stddev>0.0019</stddev>
+                                <bias_mean>0.0</bias_mean>
+                                <bias_stddev>0.0</bias_stddev>
                                 <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
                                 <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
                             </noise>
@@ -110,9 +118,9 @@
                         <y>
                             <noise type="gaussian">
                                 <mean>0.0</mean>
-                                <stddev>0.009</stddev>
-                                <bias_mean>0.00075</bias_mean>
-                                <bias_stddev>0.005</bias_stddev>
+                                <stddev>0.0019</stddev>
+                                <bias_mean>0.0</bias_mean>
+                                <bias_stddev>0.0</bias_stddev>
                                 <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
                                 <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
                             </noise>
@@ -120,9 +128,9 @@
                         <z>
                             <noise type="gaussian">
                                 <mean>0.0</mean>
-                                <stddev>0.009</stddev>
-                                <bias_mean>0.00075</bias_mean>
-                                <bias_stddev>0.005</bias_stddev>
+                                <stddev>0.0019</stddev>
+                                <bias_mean>0.0</bias_mean>
+                                <bias_stddev>0.0</bias_stddev>
                                 <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
                                 <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
                             </noise>
