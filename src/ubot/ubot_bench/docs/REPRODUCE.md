@@ -266,7 +266,7 @@ figure also carries visible stack labels.
   that contains this fix.
 
 ### 6.6 Pilot status (restarted 1 Oct 2026 after the calibration)
-- The pilot runs as the user service `bench-pilot`, through `scripts/run_experiment.sh pilot 1`:
+- The pilot runs as the user service `bench-pilot2` (started 03:44, commit 0906083, clean), through `scripts/run_experiment.sh pilot 1`:
   the experiment, then its analysis. Log: `~/uni-bot/bench_results/pilot.log`; trial log:
   `bench_results/pilot/orchestrator.log`; results: `bench_results/pilot/analysis/`.
 - Earlier, superseded pilot runs are kept for reference only, in `bench_results/_invalid_*` and
