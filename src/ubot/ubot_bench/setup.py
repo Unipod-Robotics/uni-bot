@@ -44,6 +44,7 @@ setup(
             'mission_runner = ubot_bench.mission_runner:main',
             'bench = ubot_bench.orchestrator:main',
             'bench_analyze = ubot_bench.analysis.report:main',
+            'diag = ubot_bench.diagnostics:main',
         ],
     },
 )
