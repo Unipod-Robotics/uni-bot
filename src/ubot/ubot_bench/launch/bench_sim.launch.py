@@ -15,6 +15,7 @@ Composes, identically for every stack except the range-sensor chain:
   phase:=navigation  map_server + AMCL on the stack's own map, Nav2 (nav2_bench.yaml)
 
 Condition 'degraded' (C3) sets scan_model dropout 0.20, outlier 0.02, noise x3.
+slam_profile:=tight scan-matches every 0.1 m / 0.1 rad instead of 0.5 m / 0.5 rad (see below).
 """
 import importlib.util
 import os
@@ -34,6 +35,16 @@ from ubot_bench.profiles import STACKS, load_profiles
 
 DEGRADED = {'dropout': 0.20, 'outlier': 0.02, 'noise_scale': 3.0}
 
+# slam_profile: 'default' keeps slam_toolbox's update thresholds (scan-match after 0.5 m or
+# 0.5 rad of motion, as practitioners run it); 'tight' scan-matches after 0.1 m or 0.1 rad, so the
+# online estimate depends on the sensor rather than on odometry between updates. AMCL already
+# updates every 0.1 m; 'tight' also lowers its rotation threshold from 0.2 to 0.1 rad.
+SLAM_PROFILES = {
+    'default': {'slam': {}, 'amcl': {}},
+    'tight': {'slam': {'minimum_travel_distance': '0.1', 'minimum_travel_heading': '0.1'},
+              'amcl': {'update_min_a': '0.1'}},
+}
+
 
 def share(pkg, *p):
     return os.path.join(get_package_share_directory(pkg), *p)
@@ -51,6 +62,10 @@ def setup(context):
     arg = lambda n: LaunchConfiguration(n).perform(context)  # noqa: E731
     world, stack, condition = arg('world'), arg('stack'), arg('condition')
     seed, phase = int(arg('seed')), arg('phase')
+    slam_profile = arg('slam_profile')
+    if slam_profile not in SLAM_PROFILES:
+        raise RuntimeError(f'slam_profile must be one of {list(SLAM_PROFILES)}')
+    tune = SLAM_PROFILES[slam_profile]
     headless = arg('headless')
     if stack not in STACKS or STACKS[stack] is None:
         raise RuntimeError(f'stack {stack!r} has no range sensor; choose from '
@@ -130,7 +145,8 @@ def setup(context):
     if phase == 'mapping':
         slam_params = RewrittenYaml(
             source_file=share('ubot_bench', 'config', 'slam_bench.yaml'),
-            param_rewrites={'max_laser_range': str(rng_max), 'use_sim_time': 'True'},
+            param_rewrites={'max_laser_range': str(rng_max), 'use_sim_time': 'True',
+                            **tune['slam']},
             convert_types=True)
         # slam_toolbox is a lifecycle node on Jazzy; its own launch file configures and
         # activates it (autostart).
@@ -146,7 +162,7 @@ def setup(context):
         nav_params = RewrittenYaml(
             source_file=share('ubot_bench', 'config', 'nav2_bench.yaml'),
             param_rewrites={'laser_max_range': str(rng_max), 'yaml_filename': map_yaml,
-                            'use_sim_time': 'True'},
+                            'use_sim_time': 'True', **tune['amcl']},
             convert_types=True)
         nb = get_package_share_directory('nav2_bringup')
         actions += [
@@ -177,5 +193,7 @@ def generate_launch_description():
         DeclareLaunchArgument('map', default_value=''),
         DeclareLaunchArgument('headless', default_value='true'),
         DeclareLaunchArgument('physics', default_value='dartsim'),
+        DeclareLaunchArgument('slam_profile', default_value='default',
+                              description='default (0.5 m / 0.5 rad) | tight (0.1 m / 0.1 rad)'),
         OpaqueFunction(function=setup),
     ])

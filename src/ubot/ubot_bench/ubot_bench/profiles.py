@@ -18,7 +18,6 @@ STACKS = {
     'REF': 'lidar_ref_ust10lx',
     'MS200': 'lidar_ms200',
     'LD06': 'lidar_ld06',
-    'A1': 'lidar_rplidar_a1',
     'OAKD': 'depth_oakd_lite',
     'ODOM': None,
 }

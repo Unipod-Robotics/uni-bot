@@ -1,6 +1,8 @@
 # ubot_bench: low-cost indoor navigation benchmark
 
 This package holds the simulation half of the study described in [docs/PROTOCOL.md](docs/PROTOCOL.md).
+To rebuild the whole setup from scratch, and for a log of every change made, see
+[docs/REPRODUCE.md](docs/REPRODUCE.md).
 It covers sensor noise models, ground-truth maps and trajectories, the mapping and navigation
 runners, an experiment orchestrator, and the metrics and statistics pipeline. The worlds live
 in `ubot_worlds`.
@@ -57,7 +59,6 @@ Stacks map to `ubot_description/config/sensor_profiles.yaml`:
 | `REF` | Hokuyo UST-10LX (sim only) |
 | `MS200` | Oradar MS200 |
 | `LD06` | LDROBOT LD06 |
-| `A1` | Slamtec RPLIDAR A1M8 |
 | `OAKD` | OAK-D Lite depth → scan |
 
 The odometry-only baseline is logged in every mapping trial (`odom.tum`).

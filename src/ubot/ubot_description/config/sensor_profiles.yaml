@@ -65,22 +65,6 @@ lidar_ld06:
   gz_stddev: 0.0225
   price_usd: 80
 
-lidar_rplidar_a1:
-  label: "Slamtec RPLIDAR A1M8"
-  kind: lidar
-  # Slamtec RPLIDAR A1M8 datasheet (LD108 v2.3): 0.15-12 m, 360 deg, sample rate >=8000 Hz,
-  # scan 5.5 Hz typical (up to 10 Hz), angular resolution <=1 deg, distance resolution <1%.
-  # samples = 8000 / 5.5 = 1454; verify against the real unit at bring-up (PROTOCOL.md).
-  rate_hz: 5.5
-  samples: 1454
-  fov_deg: 360.0
-  range_min: 0.15
-  range_max: 12.0
-  sigma_rel: 0.005                    # ASSUMED: <1% of range read as 2 sigma
-  bias_bands: [[12.0, 0.0]]
-  gz_stddev: 0.02
-  price_usd: 99
-
 depth_oakd_lite:
   label: "Luxonis OAK-D Lite (stereo depth -> scan)"
   kind: depth

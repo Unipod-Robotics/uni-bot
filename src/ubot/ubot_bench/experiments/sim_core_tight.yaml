@@ -1,0 +1,12 @@
+# RQ1/RQ2 ablation: the sim_core matrix with slam_toolbox scan-matching every 0.1 m / 0.1 rad
+# (and AMCL every 0.1 m / 0.1 rad) instead of the 0.5 m / 0.5 rad defaults. Same seeds as
+# sim_core, so every trial pairs with its default-threshold counterpart.
+# 4 stacks x 4 worlds x 20 seeds x 2 phases = 640 trials.
+name: sim_core_tight
+slam_profile: tight
+worlds: [arena_5x5, small_house, bookstore, small_warehouse]
+stacks: [REF, MS200, LD06, OAKD]
+conditions: [nominal]
+seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+parallel: 3
+trial_timeout_s: 7200

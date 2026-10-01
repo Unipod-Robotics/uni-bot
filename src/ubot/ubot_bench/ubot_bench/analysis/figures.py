@@ -1,8 +1,8 @@
 """Paper figures (PDF + PNG). Stack identity always has a fixed colour AND a visible label or
 marker shape (the palette's light slots are below 3:1 contrast, so colour is never the only cue).
 
-Palette: categorical slots 1-5 of the reference data-viz palette, validated for 5 adjacent
-series (CVD dE >= 9.1, normal-vision dE >= 19.6).
+Palette: categorical slots 1-4 of the reference data-viz palette in fixed order, validated for
+4 adjacent series (see the validator output in REPRODUCE.md).
 """
 import os
 
@@ -11,12 +11,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-STACK_ORDER = ['REF', 'MS200', 'LD06', 'A1', 'OAKD']
-COLORS = {'REF': '#2a78d6', 'MS200': '#eb6834', 'LD06': '#1baf7a', 'A1': '#eda100',
-          'OAKD': '#e87ba4'}
-MARKERS = {'REF': 'o', 'MS200': 's', 'LD06': '^', 'A1': 'D', 'OAKD': 'v'}
-LABELS = {'REF': 'REF (UST-10LX)', 'MS200': 'MS200', 'LD06': 'LD06', 'A1': 'RPLIDAR A1',
-          'OAKD': 'OAK-D Lite'}
+STACK_ORDER = ['REF', 'MS200', 'LD06', 'OAKD']
+COLORS = {'REF': '#2a78d6', 'MS200': '#eb6834', 'LD06': '#1baf7a', 'OAKD': '#eda100'}
+MARKERS = {'REF': 'o', 'MS200': 's', 'LD06': '^', 'OAKD': 'v'}
+LABELS = {'REF': 'REF (UST-10LX)', 'MS200': 'MS200', 'LD06': 'LD06', 'OAKD': 'OAK-D Lite'}
 INK, INK2, GRID = '#0b0b0b', '#52514e', '#e6e5e0'
 
 

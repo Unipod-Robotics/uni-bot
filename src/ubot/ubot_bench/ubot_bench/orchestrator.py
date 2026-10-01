@@ -13,7 +13,8 @@ Outputs: <results>/<experiment>/<trial_id>/{result.json, *.tum, map.*, resources
 A trial with a result.json whose status is not an infrastructure failure is never re-run.
 
 Experiment file (experiments/<name>.yaml):
-  name, worlds, stacks, conditions, seeds, phases (default both), parallel (default 2)
+  name, worlds, stacks, conditions, seeds, phases (default both), parallel (default 2),
+  slam_profile (default | tight, default 'default'), trial_timeout_s
 """
 import argparse
 import itertools
@@ -160,7 +161,8 @@ def run_trial(t, exp_dir, slots, log):
     tdir = os.path.join(exp_dir, t['id'])
     os.makedirs(tdir, exist_ok=True)
     args = [f"world:={t['world']}", f"stack:={t['stack']}", f"condition:={t['condition']}",
-            f"seed:={t['seed']}", f"phase:={t['phase']}", 'headless:=true']
+            f"seed:={t['seed']}", f"phase:={t['phase']}", 'headless:=true',
+            f"slam_profile:={exp.get('slam_profile', 'default')}"]
     if t['phase'] == 'navigation':
         map_yaml = os.path.join(exp_dir, t['id'].replace('__navigation', '__mapping'), 'map.yaml')
         if not os.path.exists(map_yaml):

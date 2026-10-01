@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Render docs/PROTOCOL.md to a print-quality PDF (Markdown -> HTML -> headless Chrome).
+"""Render a docs/*.md file to a print-quality PDF (Markdown -> HTML -> headless Chrome).
 
-Usage: ~/uni-bot/.venv-bench/bin/python scripts/protocol_pdf.py [OUT.pdf]
+Usage: ~/uni-bot/.venv-bench/bin/python scripts/protocol_pdf.py [OUT.pdf] [--src docs/X.md]
+Default: docs/PROTOCOL.md -> docs/PROTOCOL.pdf
 Needs the `markdown` package (in the benchmark venv) and google-chrome or chromium.
 """
 import os
@@ -28,7 +29,8 @@ p, li { margin: 3pt 0; }
 table { border-collapse: collapse; width: 100%; margin: 6pt 0 8pt 0; font-size: 8.3pt;
         page-break-inside: auto; }
 th { background: #f4f4f1; text-align: left; border-bottom: 1.2px solid #52514e; }
-th, td { padding: 3pt 4pt; vertical-align: top; border-bottom: 0.5px solid #d9d8d3; }
+th, td { padding: 3pt 4pt; vertical-align: top; border-bottom: 0.5px solid #d9d8d3;
+     overflow-wrap: anywhere; }
 tr { page-break-inside: avoid; }
 code { font-family: 'DejaVu Sans Mono', monospace; font-size: 8.3pt; background: #f4f4f1;
        padding: 0 2px; border-radius: 2px; }
@@ -77,8 +79,15 @@ def gfm_to_python_markdown(text):
 
 
 def main():
-    out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'docs', 'PROTOCOL.pdf')
-    with open(SRC) as f:
+    args = sys.argv[1:]
+    src = SRC
+    if '--src' in args:
+        i = args.index('--src')
+        src = os.path.abspath(args[i + 1])
+        del args[i:i + 2]
+    default_out = os.path.splitext(src)[0] + '.pdf'
+    out = args[0] if args else default_out
+    with open(src) as f:
         body = markdown.markdown(gfm_to_python_markdown(f.read()),
                                  extensions=['tables', 'fenced_code', 'sane_lists'])
     html = (f'<!doctype html><html><head><meta charset="utf-8"><title>ubot benchmark protocol'

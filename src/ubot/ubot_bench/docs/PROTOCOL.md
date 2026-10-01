@@ -1,7 +1,7 @@
 # Low-Cost Indoor Navigation Benchmark: Research Protocol
 
 **Project:** ubot, Unipod-Robotics · **Target venue:** IEEE/RSJ IROS 2027 (submission deadline
-1 March 2027; 6 pages + 2 references) · **Protocol version:** 1.0, 30 September 2026 ·
+1 March 2027; 6 pages + 2 references) · **Protocol version:** 1.3, 1 October 2026 ·
 **Code:** `src/ubot/ubot_bench` and `src/ubot/ubot_worlds` on branch `feat/nav-benchmark`.
 
 This document is the single reference for how the study is run. Anything that changes the design
@@ -35,7 +35,7 @@ the sim reference as an upper bound.
 1. A reproducible cost-versus-accuracy benchmark for 2D indoor navigation on commodity hardware.
    It covers four simulated worlds, a physical arena with a sim replica, and datasheet-derived
    sensor models, and it releases the code, worlds, missions, ground-truth maps and data.
-2. A quantified accuracy and task gap between four sub-$150 sensors and a reference LiDAR, with
+2. A quantified accuracy and task gap between three sub-$150 sensors and a reference LiDAR, with
    paired statistics over identical missions and noise seeds.
 3. A condition-level failure analysis (glass, dynamic obstacles, degradation, low light) and a
    failure-mode taxonomy.
@@ -109,8 +109,7 @@ must be replaced with dated vendor quotes before submission.
 |---|---|---|---|---|---|---|---|---|
 | REF | Hokuyo UST-10LX | 270° | 40 Hz | 1081 | 0.06–10 m | 20 mm (±40 mm read as 2σ) | ~$1,600 | sim only |
 | MS200 | Oradar MS200 | 360° | 10 Hz | 450 | 0.03–12 m | 4 mm < 2 m, 15 mm ≥ 2 m (1σ, manual) + per-run bias ±10/±20 mm | ~$60 | yes |
-| LD06 | LDROBOT LD06 | 360° | 10 Hz | 450 | 0.02–12 m | 22.5 mm (±45 mm as 2σ) | ~$80 | yes, if available |
-| A1 | Slamtec RPLIDAR A1M8 | 360° | 5.5 Hz | 1454 | 0.15–12 m | 0.5 % of range (<1 % as 2σ) | ~$99 | yes, if available |
+| LD06 | LDROBOT LD06 | 360° | 10 Hz | 450 | 0.02–12 m | 22.5 mm (±45 mm as 2σ) | ~$80 | yes |
 | OAKD | Luxonis OAK-D Lite (stereo depth → scan) | 69° | 15–30 Hz | 139 bins | 0.2–8 m | σ = 0.0025·r² (fitted to "<2 % at 4 m") | ~$149 | yes |
 
 - **Odometry-only baseline (B0).** EKF only, no range sensor. It is not a separate run: every
@@ -131,7 +130,14 @@ must be replaced with dated vendor quotes before submission.
 ## 5. Experimental design
 
 **Factors**
-- Stack (5 in sim, 2–4 real) × World (4 sim, 1 real) × Condition (C0–C4) × Seed.
+- Stack (4 in sim: REF, MS200, LD06, OAKD; 3 real: MS200, LD06, OAKD) × World (4 sim, 1 real)
+  × Condition (C0–C4) × Seed.
+- SLAM update profile: **default** (slam_toolbox scan-matches after 0.5 m or 0.5 rad of motion)
+  and **tight** (0.1 m / 0.1 rad; AMCL also 0.1 m / 0.1 rad). The default is what practitioners
+  run. The tight profile shows how much of each stack's error comes from odometry between
+  updates. It runs as a separate experiment (`sim_core_tight`) with the same seeds, so every
+  trial pairs with its default counterpart. The RPLIDAR A1 was dropped on 2026-10-01 (not used
+  in this study).
 
 **Pairing.** Within a (world, condition) cell, every stack runs the same seeds 1…N. The seed sets:
 - the sensor noise sequence and per-run bias;
@@ -226,9 +232,10 @@ chassis circumscribed radius 0.213 m plus margin), connected to the spawn.
 ### 6.4 Running
 ```bash
 source ~/uni-bot/install/setup.bash
-ros2 run ubot_bench bench run pilot                     # then sim_core, sim_degradation, sim_to_real
+ros2 run ubot_bench bench run pilot   # then sim_core, sim_core_tight, sim_degradation, sim_to_real
 ros2 run ubot_bench bench list sim_core -v              # progress
 ~/uni-bot/.venv-bench/bin/python -m ubot_bench.analysis.report sim_core
+~/uni-bot/.venv-bench/bin/python -m ubot_bench.analysis.compare sim_core sim_core_tight
 ```
 - Each trial runs headless, in its own `ROS_DOMAIN_ID` and `GZ_PARTITION`, and in its own
   process group, and is fully killed at the end.
@@ -247,8 +254,10 @@ ros2 run ubot_bench bench list sim_core -v              # progress
 
 | Campaign | Trials | Estimated time |
 |---|---|---|
-| sim_core | 800 | ~2.5 min per arena trial, longer in larger worlds; ~3 days at 3 in parallel |
-| sim_degradation | ~1,400 | Arena and house only |
+| sim_core | 640 | ~3 min per arena trial and ~20–30 min per house/bookstore/warehouse trial at real-time factor ≈ 0.3 (pilot); faster on an idle machine |
+| sim_core_tight | 640 | Same as sim_core |
+| sim_degradation | ~1,120 | Arena and house only |
+| sim_to_real | 480 | Arena only |
 
 ## 7. Real-robot procedures
 
@@ -288,7 +297,7 @@ The sim file `ubot_worlds/worlds/arena_5x5.sdf.xacro` *is* the arena specificati
 - **Session.**
   - Ground-truth validation (7.2) passes.
   - LiDAR bring-up check: rate, beams per scan and range limits match section 4.2. Record any
-    mismatch; in particular the real RPLIDAR A1 beam count.
+    mismatch.
   - IMU still test (2 min): gyro bias < 0.02°/s.
   - Wheel calibration: 1 m straight and 360° turn checks within 2 %.
   - Pivot point: one 360° in-place turn under the overhead camera. Fit a circle to the
@@ -440,7 +449,7 @@ SRCC (RQ5). All others are secondary.
 | Skid-steer odometry depends on floor friction | The real floor is the same for all stacks; wheel calibration check per session |
 | Wheel-odometry yaw under-reads turns by ~4 % in sim | Measured (EKF uses IMU yaw rate, which corrects heading); reported |
 | One SLAM method and one controller | Intentional: the sensor is the variable. A Cartographer ablation is future work |
-| slam_toolbox scan-matches only after 0.5 m or 0.5 rad of motion (its defaults, kept for ecological validity) | Between updates, the online estimate is odometry, which hides sensor differences in small worlds (pilot: REF ≈ MS200 in the arena). Map metrics and the graph are unaffected. **Decision needed before sim_core:** keep the defaults, or add a tighter-threshold ablation (0.1 m / 0.1 rad) |
+| slam_toolbox scan-matches only after 0.5 m or 0.5 rad of motion (its defaults, kept for ecological validity) | Between updates, the online estimate is odometry, which hides sensor differences in small worlds (pilot: REF ≈ MS200 in the arena). **Decided 2026-10-01:** keep the defaults for the main results and run the tight 0.1 m / 0.1 rad profile as a paired ablation (`sim_core_tight`, section 5) |
 | Scan-plane height (0.36 m) sees over sills and low shelves (bookstore) | That is real behaviour of this robot; traversability ground truth separates the effect |
 | Physics step (2 ms) chosen for speed | Identical across worlds and stacks; the arena pilot checks that behaviour matches 1 ms |
 | Physics engine | DART (Gazebo default). Bullet-Featherstone was tried and does not turn the skid-steer at all. The engine is a launch parameter (`physics:=`) so an ablation is possible |
@@ -473,7 +482,7 @@ Low-Cost Sensing for Indoor Navigation.*
 | Date | Milestone | Exit criterion |
 |---|---|---|
 | 30 Sep – 12 Oct 2026 | Sim benchmark built; pilot run | Pilot results valid (section 9.3); code tagged `bench-v1.0` |
-| 13 Oct – 31 Oct | sim_core campaign; arena build; ground-truth rig | 800 trials done; ground-truth validation RMSE ≤ 2 cm |
+| 13 Oct – 31 Oct | sim_core and sim_core_tight campaigns; arena build; ground-truth rig | 1,280 trials done; ground-truth validation RMSE ≤ 2 cm |
 | 1 Nov – 20 Nov | sim_degradation; real bring-up per stack; OSF pre-registration | Bring-up checklist passed per stack |
 | 21 Nov – 20 Dec | Real campaign, block 1 (C0, C1) | 20 runs per stack and condition |
 | 4 Jan – 24 Jan 2027 | Real campaign, block 2 (C2; exploratory C3, C4); sim_to_real | – |
@@ -516,8 +525,67 @@ Low-Cost Sensing for Indoor Navigation.*
   Characteristics of Calibrated 2D LiDAR Systems," Sensors 25(4):1211, 2025,
   doi:10.3390/s25041211.
 - Sensor datasheets: Hokuyo UST-10LX specification; Oradar MS200 user manual PD-P2117008 A0
-  (2023); LDROBOT LD06 datasheet; Slamtec RPLIDAR A1M8 datasheet LD108 v2.3; Luxonis OAK-D Lite
-  documentation.
+  (2023); LDROBOT LD06 datasheet; Luxonis OAK-D Lite documentation. Links are in Sources.
+
+## Sources
+
+Every external source this study relies on, with its link. The papers were verified by web
+search on 30 September 2026; the links were current on that date.
+
+**Papers**
+
+| Ref | Link |
+|---|---|
+| Anderson 2018 (SPL) | https://arxiv.org/abs/1807.06757 |
+| Du 2025 (TaskSLAM-Bench) | https://arxiv.org/abs/2409.16573 |
+| Kadian 2020 (Sim2Real predictivity, SRCC) | https://arxiv.org/abs/1912.06321 |
+| Kümmerle 2009 (SLAM accuracy) | https://link.springer.com/article/10.1007/s10514-009-9155-6 |
+| Macenski 2020 (Nav2, The Marathon 2) | https://arxiv.org/abs/2003.00368 |
+| Macenski 2021 (SLAM Toolbox) | https://joss.theoj.org/papers/10.21105/joss.02783 |
+| Perille 2020 (BARN) | https://arxiv.org/abs/2008.13315 |
+| Sturm 2012 (TUM RGB-D, ATE/RPE) | https://cvg.cit.tum.de/_media/spezial/bib/sturm12iros.pdf |
+| Weerakoon 2022 (Cartographer_glass) | https://arxiv.org/abs/2212.08633 |
+| Weerakoon 2024 (TOPGN) | https://arxiv.org/abs/2408.05608 |
+| Ziębiński 2025 (calibrated 2D LiDAR accuracy) | https://doi.org/10.3390/s25041211 |
+
+**Sensor datasheets** (the values in section 4.2 and `sensor_profiles.yaml`)
+
+| Sensor | Link |
+|---|---|
+| Hokuyo UST-10LX specification | https://www.hokuyo-aut.jp/dl/UST-10LX_Specification.pdf |
+| Oradar MS200 user manual (Table 2-1) | https://www.orbbec.com/wp-content/uploads/2023/07/MS200-dToF-Lidar-user-manual-A0-20230605-1.pdf |
+| LDROBOT LD06 datasheet | https://www.inno-maker.com/wp-content/uploads/2020/11/LDROBOT_LD06_Datasheet.pdf |
+| Luxonis OAK-D Lite | https://docs.luxonis.com/hardware/products/OAK-D%20Lite |
+| BNO085 gyro noise (E2 still test, internal) | `ubot_bringup/config/bno085_params.yaml`, commit 6ab133d |
+
+**Simulation assets**
+
+| Item | Link |
+|---|---|
+| World list that motivated the choice (Gazebo Classic) | https://automaticaddison.com/useful-world-files-for-gazebo-and-ros-2-simulations/ |
+| Harmonic ports used (pinned commit 30424d5) | https://github.com/zp78-ship-it/turtlebot-maze |
+| AWS RoboMaker small house (Harmonic port: PR #47) | https://github.com/aws-robotics/aws-robomaker-small-house-world/pull/47 |
+| AWS RoboMaker small warehouse (Harmonic port: PR #27) | https://github.com/aws-robotics/aws-robomaker-small-warehouse-world/pulls |
+| AWS RoboMaker bookstore | https://github.com/aws-robotics/aws-robomaker-bookstore-world |
+| AWS RoboMaker hospital (no Harmonic port; excluded) | https://github.com/aws-robotics/aws-robomaker-hospital-world |
+
+**Software**
+
+| Tool | Link |
+|---|---|
+| Nav2 | https://github.com/ros-navigation/navigation2 |
+| slam_toolbox | https://github.com/SteveMacenski/slam_toolbox |
+| robot_localization | https://github.com/cra-ros-pkg/robot_localization |
+| gz_ros2_control | https://control.ros.org/jazzy/doc/gz_ros2_control/doc/index.html |
+| evo 1.31.1 | https://github.com/MichaelGrupp/evo |
+| statsmodels | https://www.statsmodels.org |
+
+**Venue dates**
+
+| Venue | Link |
+|---|---|
+| ICRA 2027 call for papers (deadline 16 Sep 2026, passed) | https://2027.ieee-icra.org/announcements/call-for-technical-papers/ |
+| IROS 2027 deadline (1 Mar 2027) | https://mldeadlines.com/conference/iros-2027/ |
 
 ## Change log
 
@@ -526,3 +594,4 @@ Low-Cost Sensing for Indoor Navigation.*
 | 2026-09-30 | v1.0 | Initial protocol |
 | 2026-09-30 | v1.1 | Added the measured pivot behaviour (4.1), bumper and glass validation, physics-engine note, pivot measurement on the real robot (7.3). Sim now drives all four wheels explicitly (as the ESP32 does); wheel friction direction set to the axle |
 | 2026-10-01 | v1.2 | Pilot fixes (9.4): route straightening and clearance, stuck detection, stale-install guard, bounded Nav2 startup, Nav2 server timeouts, warehouse bounds and spacing, position-only success metric |
+| 2026-10-01 | v1.3 | RPLIDAR A1 dropped (not used). Tight SLAM profile (0.1 m / 0.1 rad) added as a paired ablation (`sim_core_tight`). Sources section with links added |
