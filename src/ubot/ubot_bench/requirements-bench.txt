@@ -5,3 +5,5 @@ evo==1.31.1
 statsmodels>=0.14
 pandas>=2.1
 psutil>=5.9
+markdown>=3.5          # docs PDF rendering (scripts/protocol_pdf.py)
+pymdown-extensions>=10 # superfences: code blocks inside list items

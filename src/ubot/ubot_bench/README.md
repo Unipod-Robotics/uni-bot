@@ -2,7 +2,8 @@
 
 This package holds the simulation half of the study described in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 To rebuild the whole setup from scratch, and for a log of every change made, see
-[docs/REPRODUCE.md](docs/REPRODUCE.md).
+[docs/REPRODUCE.md](docs/REPRODUCE.md). To stop experiments before a shutdown and continue them
+afterwards, see REPRODUCE.md section 5.1 (`scripts/stop_bench.sh`, `scripts/run_experiment.sh`).
 It covers sensor noise models, ground-truth maps and trajectories, the mapping and navigation
 runners, an experiment orchestrator, and the metrics and statistics pipeline. The worlds live
 in `ubot_worlds`.

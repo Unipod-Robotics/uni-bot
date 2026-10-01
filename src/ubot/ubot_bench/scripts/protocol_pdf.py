@@ -3,7 +3,8 @@
 
 Usage: ~/uni-bot/.venv-bench/bin/python scripts/protocol_pdf.py [OUT.pdf] [--src docs/X.md]
 Default: docs/PROTOCOL.md -> docs/PROTOCOL.pdf
-Needs the `markdown` package (in the benchmark venv) and google-chrome or chromium.
+Needs `markdown` and `pymdown-extensions` (superfences: code blocks inside list items) in the
+benchmark venv, and google-chrome or chromium.
 """
 import os
 import re
@@ -29,8 +30,8 @@ p, li { margin: 3pt 0; }
 table { border-collapse: collapse; width: 100%; margin: 6pt 0 8pt 0; font-size: 8.3pt;
         page-break-inside: auto; }
 th { background: #f4f4f1; text-align: left; border-bottom: 1.2px solid #52514e; }
-th, td { padding: 3pt 4pt; vertical-align: top; border-bottom: 0.5px solid #d9d8d3;
-     overflow-wrap: anywhere; }
+th, td { padding: 3pt 4pt; vertical-align: top; border-bottom: 0.5px solid #d9d8d3; }
+.url { overflow-wrap: anywhere; word-break: break-all; }
 tr { page-break-inside: avoid; }
 code { font-family: 'DejaVu Sans Mono', monospace; font-size: 8.3pt; background: #f4f4f1;
        padding: 0 2px; border-radius: 2px; }
@@ -50,21 +51,34 @@ def gfm_to_python_markdown(text):
     """GitHub renders lists that follow a paragraph line directly and nests them at 2 spaces;
     Python-Markdown needs a blank line before a list and 4-space nesting. Convert (outside code
     fences) so the .md source can stay GitHub-friendly."""
-    out, in_code, in_list = [], False, False
+    out, in_code, in_list, shift = [], False, False, 0
     for line in text.split('\n'):
         if line.lstrip().startswith('```'):
+            if not in_code:
+                lead = len(line) - len(line.lstrip())
+                # a fence inside a list item: indent it like the item's text (doubled)
+                shift = lead if (in_list and lead) else 0
+                if shift and out and out[-1].strip():
+                    out.append('')
             in_code = not in_code
-            out.append(line)
+            out.append(' ' * shift + line)
+            if not in_code:
+                shift = 0
             continue
         if in_code:
-            out.append(line)
+            out.append(' ' * shift + line if line.strip() else line)
             continue
         m = LIST.match(line)
         if m:
-            if not in_list and out and out[-1].strip() and not out[-1].lstrip().startswith('|'):
+            indent = len(m.group(1))
+            prev = out[-1] if out else ''
+            pm = LIST.match(prev)
+            sibling = pm is not None and len(pm.group(1)) == indent * 2
+            # Python-Markdown needs a blank line before a list item unless it directly follows a
+            # sibling item (after continuation text, a code block or a parent item it merges).
+            if prev.strip() and not prev.lstrip().startswith('|') and not sibling:
                 out.append('')
             in_list = True
-            indent = len(m.group(1))
             out.append(' ' * (indent * 2) + line.lstrip())
         elif in_list and line.startswith('  ') and line.strip():
             lead = len(line) - len(line.lstrip())
@@ -75,7 +89,8 @@ def gfm_to_python_markdown(text):
             elif in_list:
                 in_list = False
             out.append(line)
-    return '\n'.join(out)
+    # long URLs may break anywhere; ordinary words never do
+    return re.sub(r'(?<![(<"])(https?://[^\s|<>]+)', r'<span class="url">\1</span>', '\n'.join(out))
 
 
 def main():
@@ -89,7 +104,7 @@ def main():
     out = args[0] if args else default_out
     with open(src) as f:
         body = markdown.markdown(gfm_to_python_markdown(f.read()),
-                                 extensions=['tables', 'fenced_code', 'sane_lists'])
+                                 extensions=['tables', 'pymdownx.superfences', 'sane_lists'])
     html = (f'<!doctype html><html><head><meta charset="utf-8"><title>ubot benchmark protocol'
             f'</title><style>{CSS}</style></head><body>{body}</body></html>')
     chrome = shutil.which('google-chrome') or shutil.which('chromium') or \

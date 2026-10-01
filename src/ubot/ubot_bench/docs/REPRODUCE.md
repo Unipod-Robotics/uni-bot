@@ -8,6 +8,9 @@ and 1 October 2026. It has four uses:
 - knowing **how each component was created from scratch**: commands, derivations, algorithms and
   the checks behind every finding (section 7, with the `diag` tests in 7.14).
 
+> **Resuming after a shutdown?** Go straight to **section 5.1**. The pilot was stopped on
+> 1 Oct 2026 at 08:50 with 2 of 24 trials done, and continues from where it stopped.
+
 [PROTOCOL.md](PROTOCOL.md) is the research design (what is measured and how it is analysed). This
 document is how to reproduce the environment and the work. The two are kept in sync.
 
@@ -149,6 +152,81 @@ ros2 run ubot_bench bench list <experiment> -v                     # progress pe
 4. Results are resumable. Re-running an experiment skips finished trials and retries
    infrastructure failures once. Task failures are data and are never retried.
 
+### 5.1 Stopping, shutting down and continuing (do this yourself)
+
+Experiments are **resumable**. Every finished trial has a `result.json` with a final status, and
+`bench run <experiment>` skips those. It re-runs only trials that are missing or were
+interrupted (no status, startup timeout, crash). A trial killed half-way is simply run again
+from its start; partial trials are never mixed into the results.
+
+**Before a shutdown**
+```bash
+~/uni-bot/src/ubot/ubot_bench/scripts/stop_bench.sh
+```
+This stops every `bench-*` user service, kills all trial processes (Gazebo, Nav2, SLAM), and
+lists the trial folders left unfinished (they re-run automatically on resume). Shutting down
+without it is also safe, since the next run re-does interrupted trials. The script just makes
+the stop clean.
+
+**Continuing the pilot after a reboot.** Step by step:
+1. Close heavy programs: interactive Gazebo, RViz, OBS. They slow the sim (real-time factor
+   fell to ≈ 0.3 when they were open).
+2. Open a terminal and prepare the environment:
+   ```bash
+   conda deactivate 2>/dev/null; cd ~/uni-bot
+   source /opt/ros/jazzy/setup.bash && source install/setup.bash
+   git status -s src/ubot     # should print nothing (clean tree). If not, commit or stash first
+   git log --oneline -1       # the commit the pilot will record
+   ```
+3. Only if you changed code, worlds, missions or URDFs since the last build:
+   ```bash
+   colcon build --symlink-install --cmake-args -DBUILD_TESTING=OFF && source install/setup.bash
+   ```
+4. Check what is done and what remains:
+   ```bash
+   ros2 run ubot_bench bench list pilot          # counts per status
+   ros2 run ubot_bench bench list pilot -v       # every trial
+   ```
+5. Start it as a background service, which keeps running if you close the terminal:
+   ```bash
+   systemd-run --user --collect --unit=bench-pilot --working-directory=$HOME/uni-bot \
+     ~/uni-bot/src/ubot/ubot_bench/scripts/run_experiment.sh pilot 1
+   ```
+   If systemd says the unit name already exists, use another one, e.g. `bench-pilot-b`.
+6. Watch progress (Ctrl-C only stops the viewer, not the run):
+   ```bash
+   tail -f ~/uni-bot/bench_results/pilot.log                 # one line per finished trial
+   tail -f ~/uni-bot/bench_results/pilot/orchestrator.log
+   systemctl --user status bench-pilot                       # running or finished?
+   ```
+7. When it finishes, `run_experiment.sh` writes the analysis automatically to
+   `~/uni-bot/bench_results/pilot/analysis/`. To redo the analysis by hand:
+   ```bash
+   ~/uni-bot/.venv-bench/bin/python -m ubot_bench.analysis.report pilot
+   ```
+8. **What to check in the pilot results** (`analysis/`):
+   - `trials.csv`: every trial `status` = `ok`, and every mapping trial has `map_saved`
+     (see its `result.json`). Note any `stuck`.
+   - `success.csv`: house success should no longer collapse after one goal. A goal with
+     `reset_after = True` in `goals.csv` was failed and reset; a long run of resets in one
+     world means its goals or Nav2 settings need another look.
+   - `power.csv`: `n_required` ≤ 20 for `slam_ate_rmse`, `map_f1`, `spl` and `success_rate`
+     confirms N = 20 seeds for `sim_core`. If not, raise `seeds` in that experiment file and
+     record the change in PROTOCOL.md section 9.3.
+   - `figures/`: the figures exist and look sensible.
+9. Then the campaigns, in this order (each the same way, with its own unit name):
+   `sim_core` (parallel 3), `sim_core_tight`, `sim_degradation`, `sim_to_real`. Example:
+   ```bash
+   systemd-run --user --collect --unit=bench-sim-core --working-directory=$HOME/uni-bot \
+     ~/uni-bot/src/ubot/ubot_bench/scripts/run_experiment.sh sim_core 3
+   ```
+   With an idle machine, an arena pair takes ~5 min and a house pair ~25 min, run one at a time.
+   Use `parallel 3` only if the machine is otherwise idle; watch `uptime` (load should stay
+   below the core count, 12).
+
+**Expected pilot duration from the stop point:** 22 trials, about 2¼ hours on an idle machine
+(the last complete pilot took 2 h 17 min for 24 trials).
+
 ## 6. Work log (chronological)
 
 ### 6.1 29 Sep 2026: workspace moved to the latest branch
@@ -278,9 +356,14 @@ figure also carries visible stack labels.
   failure (7.8).
 - **Provenance.** `experiment.yaml` now keeps a `runs` list with the commit of every invocation.
 
-### 6.7 Pilot status
-- The pilot was restarted from scratch after the 6.6 fixes. It runs as a user service through
-  `scripts/run_experiment.sh pilot 1`: the experiment, then its analysis. Log: `~/uni-bot/bench_results/pilot.log`; trial log:
+### 6.7 Pilot status (stopped for a shutdown, 1 Oct 2026 08:50)
+- The pilot was restarted from scratch after the 6.6 fixes (commit `77e6fd4`, clean) at 08:43.
+- It was **stopped at 08:50** for a system shutdown, with `scripts/stop_bench.sh` added on that
+  occasion. Done: arena REF seed 1 mapping (127 s) and navigation (170 s), 5 of 6 goals. Goal 2
+  showed a false success: Nav2 reported success, but ground truth was 0.26 m off. It was reset,
+  and goals 3–6 then succeeded, so the independent-goal reset works.
+- The interrupted trial (arena REF seed 2 mapping) was deleted. 22 trials remain. Continue with
+  section 5.1. Log: `~/uni-bot/bench_results/pilot.log`; trial log:
   `bench_results/pilot/orchestrator.log`; results: `bench_results/pilot/analysis/`.
 - Earlier, superseded pilot runs are kept for reference only, in `bench_results/_invalid_*` and
   `_pilot_arena_nav_lowtimeout`.
@@ -657,7 +740,8 @@ Start a fresh simulation for each test:
 | `0906083` | feat/nav-benchmark | Sim wheel_separation calibrated to 0.2528 m (`diag separation`); `run_experiment.sh`; pilot restarted |
 | `fd4fc2e` | feat/nav-benchmark | Record the restarted pilot in this log |
 | `14d456a` | feat/nav-benchmark | Map saved from `/map`; per-run code versions |
-| (latest; see `git log`) | feat/nav-benchmark | Goal clearance 0.60 m / 0.35 m passages; independent goals (reset); PROTOCOL v1.5; pilot restarted |
+| `77e6fd4` | feat/nav-benchmark | Goal clearance 0.60 m / 0.35 m passages; independent goals (reset); PROTOCOL v1.5; pilot restarted |
+| (latest; see `git log`) | feat/nav-benchmark | Pilot stopped for shutdown; `stop_bench.sh`; section 5.1 (how to continue) |
 
 `feat/nav-benchmark` is **not pushed**. Push it with
 `git push git@github.com:Unipod-Robotics/uni-bot.git feat/nav-benchmark`.
@@ -670,6 +754,7 @@ Start a fresh simulation for each test:
 | `src/ubot/ubot_bench/docs/REPRODUCE.md` / `.pdf` | This document |
 | `src/ubot/ubot_bench/` | Harness code, experiments (`experiments/*.yaml`), Nav2/SLAM configs |
 | `src/ubot/ubot_bench/ubot_bench/diagnostics.py` | `diag` tests that reproduce every finding (7.14) |
+| `src/ubot/ubot_bench/scripts/run_experiment.sh`, `stop_bench.sh` | Start an experiment (+ analysis) as a service; stop everything safely (5.1) |
 | `src/ubot/ubot_worlds/` | Worlds, missions (+ PNG previews), ground-truth maps, model fetch script |
 | `src/ubot/ubot_description/config/sensor_profiles.yaml` | Sensor models (datasheet values) |
 | `~/uni-bot/bench_results/<experiment>/` | Trial outputs and `analysis/` (git-ignored) |

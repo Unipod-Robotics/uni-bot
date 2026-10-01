@@ -151,8 +151,8 @@ So the stacks are compared seed-by-seed on identical missions.
 **Trial = two phases.** These separate mapping error from navigation error.
 1. **Mapping.** The robot drives the world's fixed mapping route while slam_toolbox (online async)
    builds a map.
-   - In simulation a ground-truth pure-pursuit follower drives: 0.20 m/s, 0.40 m lookahead,
-     rotate in place when heading error > 60°. Every stack therefore traverses the identical path.
+   - In simulation a ground-truth pure-pursuit follower drives: 0.20 m/s, 0.30 m lookahead,
+     rotate in place when heading error > 45°. Every stack therefore traverses the identical path.
    - Outputs: map, pose graph, SLAM and EKF trajectories.
 2. **Navigation.**
    - AMCL localises on *that trial's own map*, with the initial pose at the map origin (the robot
@@ -419,7 +419,9 @@ illustrate the effects; the restarted pilot replaces them.
 - REF's ground-truth failures at goal G5 were false successes: Nav2 reported success, but the
   final in-place turn shifted the base about 0.3 m. Hence the position-only secondary metric.
 
-The pilot continues and is then analysed with `python -m ubot_bench.analysis.report pilot`.
+**Status 1 Oct 2026 08:50:** the restarted pilot (commit `77e6fd4`) was stopped for a system
+shutdown after 2 of 24 trials. It resumes where it stopped (REPRODUCE.md section 5.1) and is
+then analysed with `python -m ubot_bench.analysis.report pilot`.
 **Campaigns must run on an otherwise idle machine.**
 
 ## 10. Statistical analysis plan (pre-registered)
