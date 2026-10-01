@@ -265,7 +265,7 @@ figure also carries visible stack labels.
 | `4940ed9` | imu-bno085-ekf (pushed) | slam_toolbox `scan_topic: /scan` |
 | `dc8cfbd` | feat/nav-benchmark | Benchmark: worlds, sensor models, harness, protocol |
 | `0fd141e` | feat/nav-benchmark | Pilot fixes, all ground truth and missions, protocol v1.2 |
-| (this commit) | feat/nav-benchmark | Tight-SLAM ablation, RPLIDAR A1 removed, Sources section, this log |
+| `df5caaf` | feat/nav-benchmark | Tight-SLAM ablation, RPLIDAR A1 removed, Sources section, this log |
 
 `feat/nav-benchmark` is **not pushed**. Push it with
 `git push git@github.com:Unipod-Robotics/uni-bot.git feat/nav-benchmark`.
