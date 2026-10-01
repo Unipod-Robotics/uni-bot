@@ -16,7 +16,8 @@ conditions:
 generated:
   seed: 1
   goals: 6
-  goal_clearance: 0.35
+  goal_clearance: 0.6
+  goal_passage_clearance: 0.35
   route_spacing: 1.2
   robot_radius: 0.25
   route_clearance: [0.3, 0.35]
@@ -24,12 +25,12 @@ generated:
   route_waypoints: 13
   feasible_m2: 16.3
 goals:
-- [2.12, 2.12, 0.074]
-- [-0.27, 2.12, 2.83]
-- [2.12, -2.12, -2.236]
-- [0.62, -0.12, 2.819]
-- [-2.12, 0.58, -1.182]
-- [2.03, -0.08, -0.482]
+- [1.62, 1.88, 0.074]
+- [0.38, 1.88, 2.83]
+- [1.88, -1.72, -2.236]
+- [-1.88, 1.23, 2.819]
+- [0.33, -0.27, -1.182]
+- [-1.12, -0.17, -0.482]
 mapping_route:
 - [-1.775, -1.775]
 - [-1.785, -1.675]

@@ -1,7 +1,7 @@
 # Low-Cost Indoor Navigation Benchmark: Research Protocol
 
 **Project:** ubot, Unipod-Robotics · **Target venue:** IEEE/RSJ IROS 2027 (submission deadline
-1 March 2027; 6 pages + 2 references) · **Protocol version:** 1.4, 1 October 2026 ·
+1 March 2027; 6 pages + 2 references) · **Protocol version:** 1.5, 1 October 2026 ·
 **Code:** `src/ubot/ubot_bench` and `src/ubot/ubot_worlds` on branch `feat/nav-benchmark`.
 
 This document is the single reference for how the study is run. Anything that changes the design
@@ -159,6 +159,11 @@ So the stacks are compared seed-by-seed on identical missions.
      starts where mapping started).
    - Nav2 drives the world's fixed goal sequence. Each goal gets a budget of
      max(60 s, 4 × straight-line / 0.25 m/s + 30 s) of sim time.
+   - **Goals are independent attempts.** If a goal fails, the robot is teleported to that goal's
+     true pose, AMCL is re-initialised at the goal's map-frame pose, and the costmaps are
+     cleared before the next goal. One failure (e.g. wedged in clutter) therefore cannot cascade
+     into the rest of the sequence, and each goal is a valid unit for the per-goal statistics.
+     Resets are logged (`reset_after`) and reported.
    - Outputs: per-goal outcome, AMCL trajectory, contacts.
 
 **Worlds.** Sim worlds are in `ubot_worlds`. Furniture is static, and every world uses the same
@@ -216,9 +221,10 @@ from U(−B(r), B(r)).
 All planning happens on the traversability map, with glass panes burned in so that missions are
 identical in every condition. Feasible cells are free cells with ≥ 0.25 m clearance (the
 chassis circumscribed radius 0.213 m plus margin), connected to the spawn.
-- **Goals.** Geodesic farthest-point sampling from the spawn, among cells with ≥ 0.45 m clearance
-  (0.35 m in the arena). Goals are visited in sampling order, so every leg is long. Headings come
-  from a fixed seed.
+- **Goals.** Geodesic farthest-point sampling from the spawn, among cells with ≥ 0.60 m clearance
+  that are reachable through passages with ≥ 0.35 m clearance (distances are measured along those
+  passages). Goals are visited in sampling order, so every leg is long. Headings come from a fixed
+  seed. With 0.45 m clearance, one pilot goal sat among dining-chair legs (section 9.4).
 - **Mapping route.** Coverage points are placed by geodesic farthest-point sampling until the
   largest gap is below 1.2 m (arena), 3.0 m (house, bookstore) or 5.0 m (warehouse). They are
   toured greedily from the spawn and back to it, which gives a loop closure. Consecutive points
@@ -395,10 +401,13 @@ fixed before any reported campaign:
 | Nav2 behaviour-tree server timeout (20 ms) aborted goals under load, giving fake failures | `default_server_timeout` 1000 ms, `wait_for_service_timeout` 5000 ms (nav2_bench.yaml) |
 | Warehouse bounds included a strip outside the walls, reachable through doors | Bounds set just inside the measured outer walls |
 | Bookstore storefront is open at the scan plane (sill below) | Three-slice traversability ground truth (6.2) |
+| slam_toolbox's `save_map` waits only 2 s for `/map` (published every 5 s), so 1 in 3 mapping trials saved no map | The runner writes the first `/map` message after the robot stops (same map content and files) |
+| A house goal at 0.45 m clearance among chair legs: the robot wedged there and **every later goal failed without moving** (cascade), for every stack | Goal clearance 0.60 m with ≥ 0.35 m passages (6.3); independent goals with a reset after a failure (5) |
 
-**Calibration fix and restart.** On 1 Oct 2026 the sim wheel separation was found to be stale
+**Calibration fix and restarts.** On 1 Oct 2026 the sim wheel separation was found to be stale
 (turns overshot 4.5 % and odometry under-read them). It was calibrated to 0.2528 m and the pilot
-was **restarted from scratch**. The numbers below come from the earlier pilot runs and only
+was **restarted from scratch**. That pilot then exposed the missing-map and cascade problems
+above, and after their fixes it was restarted from scratch again. The numbers below come from the earlier pilot runs and only
 illustrate the effects; the restarted pilot replaces them.
 
 **Earlier arena results (3 seeds, superseded):**
@@ -603,3 +612,4 @@ search on 30 September 2026; the links were current on that date.
 | 2026-10-01 | v1.2 | Pilot fixes (9.4): route straightening and clearance, stuck detection, stale-install guard, bounded Nav2 startup, Nav2 server timeouts, warehouse bounds and spacing, position-only success metric |
 | 2026-10-01 | v1.3 | RPLIDAR A1 dropped (not used). Tight SLAM profile (0.1 m / 0.1 rad) added as a paired ablation (`sim_core_tight`). Sources section with links added |
 | 2026-10-01 | v1.4 | Sim wheel_separation calibrated 0.264204 → 0.2528 m (`diag separation`); pilot restarted from scratch |
+| 2026-10-01 | v1.5 | Independent goals (reset after a failed goal); goal clearance 0.60 m with ≥ 0.35 m passages; map saved from /map; pilot restarted from scratch |

@@ -5,6 +5,11 @@ Frames: goals are defined in the Gazebo world frame. The SLAM map frame is where
 started mapping (its spawn pose), so goals are sent in the map frame as T_spawn^-1 * goal. A
 mis-built map therefore misplaces goals, and that error is part of what is measured.
 
+Independent goals: if a goal fails, the robot is teleported to that goal's true pose (Gazebo
+set_pose), AMCL is re-initialised at the goal's map-frame pose and the costmaps are cleared, so a
+failure (e.g. wedged in clutter) cannot cascade into the following goals. The goal record's
+'reset_after' says when this happened.
+
 Per goal (result.json 'goals'):
   nav_status        Nav2 result (SUCCEEDED / FAILED / CANCELED / TIMEOUT)
   success           ground truth within 0.25 m and 0.30 rad of the goal when Nav2 finished
@@ -99,6 +104,24 @@ class Recorder(Node):
             return self.gt, self.path_m, len(self.contacts)
 
 
+def teleport(world, x, y, yaw):
+    """Place the robot at (x, y, yaw) in the Gazebo world via /world/<world>/set_pose."""
+    from gz.msgs10.boolean_pb2 import Boolean
+    from gz.msgs10.pose_pb2 import Pose as GzPose
+    from gz.transport13 import Node as GzNode
+    node = GzNode()
+    p = GzPose()
+    p.name = 'ubot'
+    p.position.x, p.position.y, p.position.z = float(x), float(y), 0.01
+    p.orientation.z, p.orientation.w = quat_z(yaw)
+    for _ in range(10):
+        ok, rep = node.request(f'/world/{world}/set_pose', p, GzPose, Boolean, 5000)
+        if ok and rep.data:
+            return True
+        time.sleep(0.5)
+    return False
+
+
 def to_map(goal, spawn):
     """World-frame goal (x, y, yaw) -> SLAM map frame (origin = spawn pose)."""
     sx, sy, syaw = spawn
@@ -186,9 +209,21 @@ def main():
                 'time_s': rec.get_clock().now().nanoseconds * 1e-9 - t0,
                 'gt_path_m': path1 - path0, 'start_xy': [gt0[1], gt0[2]],
                 'final_err_m': err_m, 'final_err_rad': err_r,
-                'recoveries': recoveries, 'contacts': c1 - c0, 'budget_s': budget})
+                'recoveries': recoveries, 'contacts': c1 - c0, 'budget_s': budget,
+                'reset_after': False})
+            if not result['goals'][-1]['success'] and i + 1 < len(goals):
+                # Independent goals: put the robot where this goal is, tell AMCL, clear costmaps.
+                ok = teleport(a.world, g[0], g[1], g[2])
+                time.sleep(2.0)
+                nav.setInitialPose(pose_msg(nav, gx, gy, gyaw))
+                time.sleep(2.0)
+                nav.clearAllCostmaps()
+                time.sleep(1.0)
+                result['goals'][-1]['reset_after'] = bool(ok)
             print(f"goal {i + 1}/{len(goals)}: {status} success={result['goals'][-1]['success']} "
-                  f'err={err_m:.2f} m t={result["goals"][-1]["time_s"]:.0f} s', flush=True)
+                  f'err={err_m:.2f} m t={result["goals"][-1]["time_s"]:.0f} s'
+                  f"{' (reset to goal)' if result['goals'][-1].get('reset_after') else ''}",
+                  flush=True)
         result['status'] = 'ok'
         result['sim_duration_s'] = rec.get_clock().now().nanoseconds * 1e-9 - t_start
         result['wall_duration_s'] = time.time() - wall0

@@ -130,13 +130,15 @@ def collect(exp_dir):
                                   'shortest_m': shortest, 'spl': spl,
                                   'final_err_m': g['final_err_m'],
                                   'final_err_rad': g['final_err_rad'],
-                                  'recoveries': g['recoveries'], 'contacts': g['contacts']})
+                                  'recoveries': g['recoveries'], 'contacts': g['contacts'],
+                                  'reset_after': g.get('reset_after', False)})
             if goals:
                 row['success_rate'] = float(np.mean([g['success'] for g in goals]))
                 row['success_pos_rate'] = float(np.mean([g['final_err_m'] <= 0.25 for g in goals]))
                 row['spl'] = float(np.nanmean(spl_terms))
                 row['time_per_goal_s'] = float(np.mean([g['time_s'] for g in goals]))
                 row['recoveries'] = int(sum(g['recoveries'] for g in goals))
+                row['resets'] = int(sum(g.get('reset_after', False) for g in goals))
                 row['false_success'] = int(sum(g['nav_status'] == 'SUCCEEDED' and
                                                not g['success'] for g in goals))
         trial_rows.append(row)

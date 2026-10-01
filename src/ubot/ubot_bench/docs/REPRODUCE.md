@@ -265,9 +265,22 @@ figure also carries visible stack labels.
   `bench_results/_invalid_pilot_sep0264/`. The pilot was restarted from scratch at the commit
   that contains this fix.
 
-### 6.6 Pilot status (restarted 1 Oct 2026 after the calibration)
-- The pilot runs as the user service `bench-pilot2` (started 03:44, commit 0906083, clean), through `scripts/run_experiment.sh pilot 1`:
-  the experiment, then its analysis. Log: `~/uni-bot/bench_results/pilot.log`; trial log:
+### 6.6 1 Oct 2026: missing maps and cascading goal failures; pilot restarted
+- **Missing maps.** 4 of 12 mapping trials ended `ok` but with no `map.yaml`; their navigation
+  trials were skipped. The log showed `map_saver: Failed to spin map subscription`. Fix: the
+  runner saves `/map` itself (7.8). Checked on an arena trial: map F1 1.00 and ATE 7.0 cm, as
+  before.
+- **Cascades.** House navigation succeeded only 25 % (REF) and 31 % (MS200), even with REF's
+  localisation at 7.6 cm. Goal 3 at (6.78, 0.88) sat among dining-chair legs. The robot wedged
+  there: "Failed to make progress" 69 times, and backup and spin aborted with "Collision Ahead".
+  Every later goal then failed without the robot moving (0.00 m driven). Approved fix: goal
+  clearance 0.60 m with ≥ 0.35 m passages (7.7), and independent goals with a reset after a
+  failure (7.8).
+- **Provenance.** `experiment.yaml` now keeps a `runs` list with the commit of every invocation.
+
+### 6.7 Pilot status
+- The pilot was restarted from scratch after the 6.6 fixes. It runs as a user service through
+  `scripts/run_experiment.sh pilot 1`: the experiment, then its analysis. Log: `~/uni-bot/bench_results/pilot.log`; trial log:
   `bench_results/pilot/orchestrator.log`; results: `bench_results/pilot/analysis/`.
 - Earlier, superseded pilot runs are kept for reference only, in `bench_results/_invalid_*` and
   `_pilot_arena_nav_lowtimeout`.
@@ -461,7 +474,10 @@ missions are identical in every condition.
 - *Feasible.* Clearance ≥ 0.25 m, where 0.213 m is the chassis circumscribed radius
   (√(0.1785² + 0.116²)).
 - *Goals.* Geodesic farthest-point sampling (Dijkstra, 8-connected) from the spawn among cells
-  with ≥ 0.45 m clearance (arena 0.35). Visited in sampling order, with headings from seed 1.
+  with ≥ 0.60 m clearance that are reachable through passages with ≥ 0.35 m clearance
+  (distances measured along those passages). Visited in sampling order, with headings from
+  seed 1. These limits came from the pilot: at 0.45 m a house goal landed among dining-chair
+  legs and the robot wedged there.
 - *Route.*
   - Farthest-point coverage points until the largest gap is below the spacing (1.2 / 3.0 /
     3.0 / 5.0 m), toured greedily and closed back at the spawn, which gives a loop closure.
@@ -495,6 +511,18 @@ missions are identical in every condition.
     "false success" is measurable.
   - `waitUntilNav2Active` is wrapped in a 180 s bounded wait, because it can block forever when
     a lifecycle transition is lost under load.
+  - **Independent goals.** After a failed goal (when more goals follow), the runner:
+    1. teleports the robot to the goal's true pose (gz `/world/<w>/set_pose`, model `ubot`);
+    2. calls `setInitialPose` at the goal's map-frame pose;
+    3. calls `clearAllCostmaps`;
+    4. sets `reset_after` on that goal.
+
+    The teleport happens between two distance snapshots, so it never counts as a leg's path.
+    Checked: the robot lands exactly on the requested pose (−1.8, −1.8 → 1.0, −0.5).
+- **Map saving.** The runner subscribes to `/map` (reliable, transient local) and writes the first
+  message stamped after the robot stopped as trinary PGM/YAML (free ≤ 25, occupied ≥ 65, the
+  same as map_saver). Then it calls `serialize_map`. slam_toolbox's `save_map` service was
+  dropped: its internal map_saver waits 2 s for `/map`, which slam_toolbox publishes every 5 s.
 
 ### 7.9 Nav2 and SLAM configuration (30 Sep to 1 Oct)
 Both are derived programmatically from the existing sim configs (`yaml` load → edit → dump with
@@ -626,7 +654,10 @@ Start a fresh simulation for each test:
 | `df5caaf` | feat/nav-benchmark | Tight-SLAM ablation, RPLIDAR A1 removed, Sources section, this log |
 | `651fbd5` | feat/nav-benchmark | Record commit hash in this log |
 | `d06570e` | feat/nav-benchmark | `diag` tests for every finding; section 7 "How everything was built from scratch" |
-| (latest; see `git log`) | feat/nav-benchmark | Sim wheel_separation calibrated to 0.2528 m (`diag separation`); `run_experiment.sh`; pilot restarted |
+| `0906083` | feat/nav-benchmark | Sim wheel_separation calibrated to 0.2528 m (`diag separation`); `run_experiment.sh`; pilot restarted |
+| `fd4fc2e` | feat/nav-benchmark | Record the restarted pilot in this log |
+| `14d456a` | feat/nav-benchmark | Map saved from `/map`; per-run code versions |
+| (latest; see `git log`) | feat/nav-benchmark | Goal clearance 0.60 m / 0.35 m passages; independent goals (reset); PROTOCOL v1.5; pilot restarted |
 
 `feat/nav-benchmark` is **not pushed**. Push it with
 `git push git@github.com:Unipod-Robotics/uni-bot.git feat/nav-benchmark`.
