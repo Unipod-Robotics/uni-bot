@@ -28,6 +28,8 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 
 INFRA_FAIL = {'startup_timeout', 'crashed', 'runner_timeout', None}
+# 'stuck' (the ground-truth mapping follower hit something) is a protocol failure: kept, reported,
+# excluded from analysis, never silently retried.
 ESTIMATION_PROCS = ('slam_toolbox', 'amcl', 'ekf_node', 'scan_model', 'depth_to_scan',
                     'controller_server', 'planner_server', 'bt_navigator', 'behavior_server',
                     'map_server', 'velocity_smoother', 'collision_monitor', 'smoother_server')
@@ -213,8 +215,29 @@ def run_trial(t, exp_dir, slots, log):
 exp = {}
 
 
+def check_installed_missions():
+    """Abort if ubot_worlds' installed missions/maps differ from the source tree (it installs
+    copies, so forgetting to rebuild after make_missions silently runs old routes)."""
+    import filecmp
+    from ament_index_python.packages import get_package_share_directory
+    src = os.path.expanduser('~/uni-bot/src/ubot/ubot_worlds')
+    inst = get_package_share_directory('ubot_worlds')
+    stale = []
+    for sub in ('missions', 'maps_gt', 'worlds'):
+        for root, _, files in os.walk(os.path.join(src, sub)):
+            for fn in files:
+                a = os.path.join(root, fn)
+                b = os.path.join(inst, os.path.relpath(a, src))
+                if not os.path.exists(b) or not filecmp.cmp(a, b, shallow=False):
+                    stale.append(os.path.relpath(a, src))
+    if stale:
+        raise SystemExit(f'ubot_worlds install is stale ({len(stale)} files, e.g. {stale[:3]}); '
+                         'run: colcon build --packages-select ubot_worlds')
+
+
 def cmd_run(a):
     global exp
+    check_installed_missions()
     exp = load_experiment(a.experiment)
     exp_dir = os.path.join(results_root(), exp['name'])
     os.makedirs(exp_dir, exist_ok=True)
@@ -233,19 +256,36 @@ def cmd_run(a):
             logf.flush()
     slots = Slots()
     parallel = a.parallel or exp['parallel']
-    for phase in ('mapping', 'navigation'):          # every map exists before navigation starts
-        todo = [t for t in all_trials if t['phase'] == phase and
-                read_status(os.path.join(exp_dir, t['id'])) in INFRA_FAIL]
-        log(f'{phase}: {len(todo)} trials to run ({parallel} in parallel)')
+    # Pair scheduling: each (world, condition, stack, seed) runs mapping then, if a map was saved,
+    # its navigation trial straight away, so complete results accumulate from the first hour.
+    maps = {t['id'].replace('__mapping', ''): t for t in all_trials if t['phase'] == 'mapping'}
+    navs = {t['id'].replace('__navigation', ''): t for t in all_trials if t['phase'] == 'navigation'}
+    keys = [k for k in maps] + [k for k in navs if k not in maps]
+
+    def run_with_retry(t):
+        if read_status(os.path.join(exp_dir, t['id'])) not in INFRA_FAIL:
+            return
         for attempt in range(2):                     # one retry for infrastructure failures
-            with ThreadPoolExecutor(max_workers=parallel) as pool:
-                list(pool.map(lambda t: run_trial(t, exp_dir, slots, log), todo))
-            todo = [t for t in todo if read_status(os.path.join(exp_dir, t['id'])) in INFRA_FAIL]
-            if not todo:
-                break
-            log(f'{phase}: retrying {len(todo)} infrastructure failures')
-            for t in todo:
+            run_trial(t, exp_dir, slots, log)
+            if read_status(os.path.join(exp_dir, t['id'])) not in INFRA_FAIL:
+                return
+            if attempt == 0:
+                log(f"{t['id']}: infrastructure failure, retrying once")
                 os.remove(os.path.join(exp_dir, t['id'], 'result.json'))
+
+    def run_pair(key):
+        if key in maps:
+            run_with_retry(maps[key])
+        if key in navs:
+            run_with_retry(navs[key])
+
+    todo = [k for k in keys if any(
+        read_status(os.path.join(exp_dir, t['id'])) in INFRA_FAIL
+        for t in (maps.get(k), navs.get(k)) if t)]
+    log(f'{len(todo)} of {len(keys)} (world, condition, stack, seed) pairs to run, '
+        f'{parallel} in parallel')
+    with ThreadPoolExecutor(max_workers=parallel) as pool:
+        list(pool.map(run_pair, todo))
     log('done')
 
 

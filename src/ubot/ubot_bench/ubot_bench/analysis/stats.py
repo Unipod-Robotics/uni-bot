@@ -25,7 +25,7 @@ from scipy import stats
 RNG = np.random.default_rng(20260930)
 TRIAL_METRICS = ['slam_ate_rmse', 'slam_ate_anchor_rmse', 'slam_rpe_t_1m', 'slam_rpe_r_1m',
                  'map_f1', 'map_precision', 'map_recall', 'wall_offset_mean', 'free_iou',
-                 'odom_ate_anchor_rmse', 'loc_ate_rmse', 'success_rate', 'spl',
+                 'odom_ate_anchor_rmse', 'loc_ate_rmse', 'success_rate', 'success_pos_rate', 'spl',
                  'time_per_goal_s', 'recoveries', 'contacts', 'false_success',
                  'cpu_estimation_pct']
 LOWER_IS_BETTER = {'slam_ate_rmse', 'slam_ate_anchor_rmse', 'slam_rpe_t_1m', 'slam_rpe_r_1m',

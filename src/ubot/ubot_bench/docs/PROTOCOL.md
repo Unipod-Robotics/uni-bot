@@ -158,10 +158,10 @@ So the stacks are compared seed-by-seed on identical missions.
 
 | ID | World | Size (feasible area) | Why it is in the study | Route | Goals |
 |---|---|---|---|---|---|
-| W0 | `arena_5x5`: sim replica of the physical arena | 16.3 m² | Controlled; sim-to-real anchor | 25.2 m | 6 |
-| W1 | `small_house` (AWS RoboMaker, Harmonic port) | measured by make_missions | Rooms, doorways, clutter | see missions yaml | 8 |
-| W2 | `bookstore` (AWS) | " | Retail aisles; glass storefront above a sill | " | 8 |
-| W3 | `small_warehouse` (AWS) | " | Large open space beyond 12 m sensor range; repetitive racking | " | 8 |
+| W0 | `arena_5x5`: sim replica of the physical arena | 16.3 m² | Controlled; sim-to-real anchor | 22.2 m | 6 |
+| W1 | `small_house` (AWS RoboMaker, Harmonic port) | 121.9 m² | Rooms, doorways, clutter | 75.6 m | 8 |
+| W2 | `bookstore` (AWS) | 118.5 m² | Retail aisles; glass storefront above a sill | 91.7 m | 8 |
+| W3 | `small_warehouse` (AWS) | 212.8 m² | Large open space beyond 12 m sensor range; repetitive racking | 103.7 m | 8 |
 
 The Harmonic ports come from community pull requests on the archived AWS repositories, as
 packaged in `turtlebot-maze/tb_worlds` (pinned commit `30424d5`). The hospital world has no
@@ -192,7 +192,8 @@ from U(−B(r), B(r)).
 ### 6.2 Ground-truth maps (`gt_map`)
 - A collision-free, noiseless scanner (2880 beams, 30 m range, three LiDARs at 0.08, 0.22 and
   0.3627 m) is teleported through the world. It starts at the spawn point, then visits a 0.5 m
-  lattice breadth-first. A lattice node is visited only once it is known free with ≥ 0.30 m
+  lattice breadth-first (0.75 m in the open warehouse, where every surface is seen from many
+  nodes). A lattice node is visited only once it is known free with ≥ 0.30 m
   clearance, inside the world's bounds, and connected to the spawn through known-free space.
 - Cell labels:
   - occupied: ≥ 2 hits and a hit ratio ≥ 0.25;
@@ -211,9 +212,15 @@ chassis circumscribed radius 0.213 m plus margin), connected to the spawn.
   (0.35 m in the arena). Goals are visited in sampling order, so every leg is long. Headings come
   from a fixed seed.
 - **Mapping route.** Coverage points are placed by geodesic farthest-point sampling until the
-  largest gap is below 1.2 m (arena), 3.0 m (house, bookstore) or 3.5 m (warehouse). They are
+  largest gap is below 1.2 m (arena), 3.0 m (house, bookstore) or 5.0 m (warehouse). They are
   toured greedily from the spawn and back to it, which gives a loop closure. Consecutive points
-  are joined by clearance-preferring shortest paths, then smoothed and resampled every 0.10 m.
+  are joined by clearance-preferring shortest paths over cells with ≥ 0.30 m clearance. The grid
+  path is then straightened locally (each straight segment keeps ≥ 0.35 m clearance and stays
+  within 0.25 m of the grid path) and resampled every 0.10 m.
+  - Without straightening, the 8-connected zig-zag made the follower crawl at ~0.08 m/s.
+  - The extra clearance is needed because the follower cuts corners, and during an in-place turn
+    the rear of the chassis swings ~0.33 m about the front-axle pivot (section 4.1). At 0.25 m
+    the pilot's ground-truth follower hit a box.
 - A preview PNG is written per world (`missions/<world>.png`).
 
 ### 6.4 Running
@@ -227,6 +234,11 @@ ros2 run ubot_bench bench list sim_core -v              # progress
   process group, and is fully killed at the end.
 - Infrastructure failures (startup timeout, crash) are retried once. Task failures are data and
   are never retried.
+- A mapping trial whose ground-truth follower makes no progress for 30 s is marked `stuck`. This
+  is a protocol failure, since the follower does not use the sensor. It is reported and excluded,
+  never retried silently.
+- `bench run` refuses to start if `ubot_worlds`' installed missions, maps or worlds differ from
+  the source tree (the package installs copies).
 - Close any interactive Gazebo before a campaign: it competes for CPU and lowers the real-time
   factor.
 - Results go to `~/uni-bot/bench_results/<experiment>/<trial>/`.
@@ -318,6 +330,7 @@ The sim file `ubot_worlds/worlds/arena_5x5.sdf.xacro` *is* the arena specificati
 | Free-space IoU | IoU of free cells over the observable region |
 | Success | Ground truth within 0.25 m and 0.30 rad of the goal when Nav2 finishes, and within budget. Never the robot's belief |
 | False success | Nav2 reports SUCCEEDED but ground truth fails the success criterion |
+| Position-only success (secondary) | Ground truth within 0.25 m, heading ignored. The final in-place turn to the goal heading shifts the base up to ~0.25 m about the front-axle pivot (section 4.1) for every stack, so this separates "reached the place" from that robot effect |
 | SPL | (1/N) Σ Sᵢ · ℓᵢ / max(pᵢ, ℓᵢ), where ℓᵢ is the shortest feasible path on the traversability map from the leg's actual start and pᵢ is the driven path length [Anderson 2018] |
 | Time to goal | Sim or wall seconds from dispatch to Nav2 result |
 | Collisions | Chassis collision episodes, counted per leg. Sim: contact sensor on all chassis collisions, where a new episode with an object starts after ≥ 0.5 s without contact (validated by driving into a wall: 1 episode). Real: bumper/IMU spike plus video review |
@@ -355,6 +368,34 @@ video review with two independent raters and Cohen's κ reported:
 REF median at α = .05 and power .8 (paired t, Wilcoxon ARE 0.955). If any primary metric needs
 n > 20, N is raised for that world before the campaign, and the change is recorded in the change
 log.
+
+### 9.4 Pilot log (30 Sep to 1 Oct 2026)
+The pilot runs REF and MS200 × arena and house × 3 seeds, on a heavily loaded machine
+(load ≈ 50 on 12 cores with OBS and an interactive sim running; real-time factor ≈ 0.3).
+Sim-time results are valid, but several **load- and design-related failures** surfaced and were
+fixed before any reported campaign:
+
+| Issue found | Fix |
+|---|---|
+| Mapping route zig-zag (47°/m): follower averaged 0.08 m/s | Local straightening of the grid path (6.3) |
+| Ground-truth follower hit a box (corner cutting plus rear swing in pivot turns) | Route clearance 0.30 / 0.35 m; lookahead 0.30 m; `stuck` detection (6.4) |
+| Installed missions were stale after regeneration, so trials mixed old and new routes | `bench run` refuses to start on a stale install (6.4) |
+| Lifecycle activation timed out under load, so AMCL never activated and the runner hung | Bounded startup wait; startup failures are retried once (6.4) |
+| Nav2 behaviour-tree server timeout (20 ms) aborted goals under load, giving fake failures | `default_server_timeout` 1000 ms, `wait_for_service_timeout` 5000 ms (nav2_bench.yaml) |
+| Warehouse bounds included a strip outside the walls, reachable through doors | Bounds set just inside the measured outer walls |
+| Bookstore storefront is open at the scan plane (sill below) | Three-slice traversability ground truth (6.2) |
+
+**Arena results so far (3 seeds; navigation re-run pending after the timeout fix):**
+- Mapping: SLAM ATE is REF 7.2 cm vs MS200 7.5 cm, RPE per 1 m is 6.2 vs 9.4 cm, and map F1 is
+  1.00 for both. In a 5 × 5 m arena the online estimate is dominated by motion between SLAM
+  updates and the pivot (section 12), not by sensor noise.
+- Power: on the first arena navigation pass, ≈ 11–12 paired seeds detect a 20 % change in
+  success or SPL, so N = 20 is adequate. Recompute this on the clean pilot.
+- REF's ground-truth failures at goal G5 were false successes: Nav2 reported success, but the
+  final in-place turn shifted the base about 0.3 m. Hence the position-only secondary metric.
+
+The pilot continues and is then analysed with `python -m ubot_bench.analysis.report pilot`.
+**Campaigns must run on an otherwise idle machine.**
 
 ## 10. Statistical analysis plan (pre-registered)
 
@@ -399,6 +440,7 @@ SRCC (RQ5). All others are secondary.
 | Skid-steer odometry depends on floor friction | The real floor is the same for all stacks; wheel calibration check per session |
 | Wheel-odometry yaw under-reads turns by ~4 % in sim | Measured (EKF uses IMU yaw rate, which corrects heading); reported |
 | One SLAM method and one controller | Intentional: the sensor is the variable. A Cartographer ablation is future work |
+| slam_toolbox scan-matches only after 0.5 m or 0.5 rad of motion (its defaults, kept for ecological validity) | Between updates, the online estimate is odometry, which hides sensor differences in small worlds (pilot: REF ≈ MS200 in the arena). Map metrics and the graph are unaffected. **Decision needed before sim_core:** keep the defaults, or add a tighter-threshold ablation (0.1 m / 0.1 rad) |
 | Scan-plane height (0.36 m) sees over sills and low shelves (bookstore) | That is real behaviour of this robot; traversability ground truth separates the effect |
 | Physics step (2 ms) chosen for speed | Identical across worlds and stacks; the arena pilot checks that behaviour matches 1 ms |
 | Physics engine | DART (Gazebo default). Bullet-Featherstone was tried and does not turn the skid-steer at all. The engine is a launch parameter (`physics:=`) so an ablation is possible |
@@ -483,3 +525,4 @@ Low-Cost Sensing for Indoor Navigation.*
 |---|---|---|
 | 2026-09-30 | v1.0 | Initial protocol |
 | 2026-09-30 | v1.1 | Added the measured pivot behaviour (4.1), bumper and glass validation, physics-engine note, pivot measurement on the real robot (7.3). Sim now drives all four wheels explicitly (as the ESP32 does); wheel friction direction set to the axle |
+| 2026-10-01 | v1.2 | Pilot fixes (9.4): route straightening and clearance, stuck detection, stale-install guard, bounded Nav2 startup, Nav2 server timeouts, warehouse bounds and spacing, position-only success metric |

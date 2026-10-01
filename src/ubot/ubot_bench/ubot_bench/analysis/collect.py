@@ -122,6 +122,9 @@ def collect(exp_dir):
                 spl_terms.append(spl)
                 goal_rows.append({'trial': tid, **meta, 'goal': g['index'],
                                   'success': g['success'], 'nav_status': g['nav_status'],
+                                  # position-only success: separates "reached the place" from the
+                                  # final in-place turn, which shifts the base ~0.25 m (pivot)
+                                  'success_pos': bool(g['final_err_m'] <= 0.25),
                                   'nav_says_success': g['nav_status'] == 'SUCCEEDED',
                                   'time_s': g['time_s'], 'gt_path_m': g['gt_path_m'],
                                   'shortest_m': shortest, 'spl': spl,
@@ -130,6 +133,7 @@ def collect(exp_dir):
                                   'recoveries': g['recoveries'], 'contacts': g['contacts']})
             if goals:
                 row['success_rate'] = float(np.mean([g['success'] for g in goals]))
+                row['success_pos_rate'] = float(np.mean([g['final_err_m'] <= 0.25 for g in goals]))
                 row['spl'] = float(np.nanmean(spl_terms))
                 row['time_per_goal_s'] = float(np.mean([g['time_s'] for g in goals]))
                 row['recoveries'] = int(sum(g['recoveries'] for g in goals))

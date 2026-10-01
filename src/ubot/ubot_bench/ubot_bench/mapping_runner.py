@@ -34,9 +34,10 @@ from ubot_bench.common import (TumWriter, load_mission, stamp_s, wait_for, wrap,
                                yaw_of)
 
 SPEED = 0.20          # m/s along the route
-LOOKAHEAD = 0.40      # m
+LOOKAHEAD = 0.30      # m (smaller = less corner cutting)
 W_MAX = 1.0           # rad/s
-ROTATE_FIRST = math.radians(60)
+ROTATE_FIRST = math.radians(45)
+STUCK_S = 30.0        # sim s without 0.2 m of progress along the route -> abort as 'stuck'
 
 
 class Mapper(Node):
@@ -113,6 +114,7 @@ def follow(node, route, timeout_s):
     s_cum = np.concatenate([[0.0], np.cumsum(seg)])
     idx = 0
     t_end = node.now_s() + timeout_s
+    best_s, best_t = 0.0, node.now_s()
     while rclpy.ok():
         if node.now_s() > t_end:
             node.send(0.0, 0.0)
@@ -123,6 +125,11 @@ def follow(node, route, timeout_s):
         ahead = np.searchsorted(s_cum, s_cum[idx] + 2.0)
         window = route[idx:max(ahead, idx + 1) + 1]
         idx += int(np.argmin(np.hypot(window[:, 0] - x, window[:, 1] - y)))
+        if s_cum[idx] > best_s + 0.2:
+            best_s, best_t = s_cum[idx], node.now_s()
+        elif node.now_s() - best_t > STUCK_S:
+            node.send(0.0, 0.0)
+            return 'stuck'           # the GT follower hit something: a protocol failure, excluded
         if idx >= len(route) - 1 and math.hypot(route[-1, 0] - x, route[-1, 1] - y) < 0.15:
             node.send(0.0, 0.0)
             return 'ok'

@@ -59,7 +59,7 @@ class Scanner:
             self.node.subscribe(LaserScan, f'/gt_scanner/scan_{k}',
                                 lambda msg, k=k: self.last.__setitem__(k, msg))
 
-    def _req(self, service, req, req_type, timeout=5000):
+    def _req(self, service, req, req_type, timeout=15000):
         ok, rep = self.node.request(f'/world/{self.world}/{service}', req, req_type, Boolean,
                                     timeout)
         return ok and rep.data
@@ -95,12 +95,12 @@ class Scanner:
         p.name = 'gt_scanner'
         p.position.x, p.position.y, p.position.z = x, y, SCAN_HEIGHT
         p.orientation.w = 1.0
-        for attempt in range(5):        # the service occasionally times out under load
+        for attempt in range(10):       # the service times out under heavy machine load
             if self._req('set_pose', p, Pose):
                 break
-            time.sleep(0.5)
+            time.sleep(1.0)
         else:
-            raise RuntimeError(f'set_pose failed 5 times at ({x:.2f}, {y:.2f})')
+            raise RuntimeError(f'set_pose failed 10 times at ({x:.2f}, {y:.2f})')
         while time.time() - t0 < timeout:
             snap = dict(self.last)
             if all(m is not None and self._stamp(m) >= t_req + 0.149 for m in snap.values()):

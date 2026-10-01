@@ -7,6 +7,10 @@
 #     instead of robot_radius 0.15, and inflation_radius 0.45 m in both (was 0.55 / 0.2)
 #   - costmap marking / clearing ranges (2.5 / 3.0 m) are below every sensor's range, so the
 #     costmaps are identical for all stacks
+#   - load tolerance (no effect on navigation behaviour): bt_navigator default_server_timeout
+#     20 -> 1000 ms and wait_for_service_timeout 1000 -> 5000 ms (at 20 ms the planner's goal
+#     acknowledgement timed out on a loaded machine and Nav2 aborted the goal); costmap and DWB
+#     transform_tolerance -> 0.5 s
 # Per stack, bench_sim.launch.py overrides only sensor-range-dependent values (AMCL
 # laser_max_range, costmap obstacle/raytrace ranges) from sensor_profiles.yaml.
 bt_navigator:
@@ -17,8 +21,8 @@ bt_navigator:
     odom_topic: /odometry/filtered
     bt_loop_duration: 10
     filter_duration: 0.3
-    default_server_timeout: 20
-    wait_for_service_timeout: 1000
+    default_server_timeout: 1000
+    wait_for_service_timeout: 5000
     introspection_mode: disabled
     navigators: [navigate_to_pose, navigate_through_poses]
     navigate_to_pose: {plugin: 'nav2_bt_navigator::NavigateToPoseNavigator', enable_groot_monitoring: false, groot_server_port: 1667}
@@ -75,7 +79,7 @@ controller_server:
       sim_time: 1.7
       linear_granularity: 0.05
       angular_granularity: 0.025
-      transform_tolerance: 0.2
+      transform_tolerance: 0.5
       xy_goal_tolerance: 0.15
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: true
@@ -120,6 +124,7 @@ local_costmap:
       always_send_full_costmap: true
       introspection_mode: disabled
       footprint: '[[0.18, 0.12], [0.18, -0.12], [-0.18, -0.12], [-0.18, 0.12]]'
+      transform_tolerance: 0.5
 global_costmap:
   global_costmap:
     ros__parameters:
@@ -142,6 +147,7 @@ global_costmap:
       always_send_full_costmap: true
       introspection_mode: disabled
       footprint: '[[0.18, 0.12], [0.18, -0.12], [-0.18, -0.12], [-0.18, 0.12]]'
+      transform_tolerance: 0.5
 planner_server:
   ros__parameters:
     use_sim_time: true

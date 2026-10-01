@@ -120,7 +120,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--world', required=True)
     ap.add_argument('--out', required=True)
-    ap.add_argument('--startup-timeout', type=float, default=300.0)
+    ap.add_argument('--startup-timeout', type=float, default=180.0)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     mission = load_mission(a.world)
@@ -143,7 +143,15 @@ def main():
         time.sleep(3.0)
         # The robot starts exactly at the spawn = SLAM map origin.
         nav.setInitialPose(pose_msg(nav, 0.0, 0.0, 0.0))
-        nav.waitUntilNav2Active(localizer='amcl')
+        # waitUntilNav2Active blocks forever if a lifecycle transition was lost (seen under heavy
+        # machine load: map_server's change_state response timed out, AMCL never activated).
+        # Bound it; a startup failure is an infrastructure failure the orchestrator retries.
+        ready = threading.Event()
+        threading.Thread(target=lambda: (nav.waitUntilNav2Active(localizer='amcl'),
+                                         ready.set()), daemon=True).start()
+        if not ready.wait(timeout=a.startup_timeout):
+            result['status'] = 'startup_timeout'
+            return
         time.sleep(2.0)
         t_start = rec.get_clock().now().nanoseconds * 1e-9
         for i, g in enumerate(goals):
