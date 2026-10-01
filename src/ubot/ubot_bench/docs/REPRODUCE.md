@@ -132,12 +132,13 @@ ros2 run ubot_bench bench list <experiment> -v                     # progress pe
    (`experiment.yaml`, `code_version`).
 2. Close everything heavy first: interactive Gazebo, RViz, OBS. During the pilot the machine sat
    at load ≈ 50 on 12 cores (real-time factor ≈ 0.3). That is slow and it caused timeouts.
-3. Run long jobs as user services so they survive closing terminals and sessions:
+3. Run long jobs as user services so they survive closing terminals and sessions.
+   `scripts/run_experiment.sh` runs the experiment, then its analysis:
    ```bash
    systemd-run --user --collect --unit=bench-sim-core --working-directory=$HOME/uni-bot \
-     bash -c 'source /opt/ros/jazzy/setup.bash; source install/setup.bash; \
-              ros2 run ubot_bench bench run sim_core --parallel 3 > bench_results/sim_core.log 2>&1'
+     ~/uni-bot/src/ubot/ubot_bench/scripts/run_experiment.sh sim_core 3
    systemctl --user status bench-sim-core            # running?
+   tail -f ~/uni-bot/bench_results/sim_core.log      # progress
    systemctl --user stop bench-sim-core              # stop the orchestrator
    ```
    If you stop it, kill the trial processes too (each trial is tagged
@@ -250,13 +251,26 @@ MS200, LD06 and OAK-D, in that order (#2a78d6, #eb6834, #1baf7a, #eda100). The v
 (worst adjacent CVD ΔE 9.1, normal-vision ΔE 22.9). Two colours are below 3:1 contrast, so every
 figure also carries visible stack labels.
 
-### 6.5 Pilot status (1 Oct 2026, 02:30)
-- The pilot runs as a user service, `ubot-pilot2`. The follow-up service `ubot-pilot-followup`
-  waits for it, re-runs the set-aside arena navigation trials, then writes
-  `bench_results/pilot/analysis/`. Its log is `bench_results/pilot_followup.log`.
-- **Arena results so far:** SLAM ATE is REF 7.2 cm vs MS200 7.5 cm, and map F1 is 1.00 for
-  both. The navigation numbers are being re-run after fix #9.
-- **House:** the mapping pair completed; navigation is running.
+### 6.5 1 Oct 2026: wheel-separation calibration; pilot restarted
+- **Finding.** In-place turns overshot by 4.5 % (`diag separation`: true/commanded = 1.045 at
+  0.3, 0.6 and 1.0 rad/s). The sim controller's `wheel_separation` 0.264204 was a leftover from an
+  older robot model; its comment claimed a Gazebo check of 1.001 that no longer held after the
+  chassis, wheel and friction changes. A ratio that is identical at every rate means a wrong
+  constant, not slip.
+- **Fix.** `ubot_bringup/config/sim_ubot_controllers.yaml` wheel_separation = 0.264204 / 1.045 =
+  **0.2528 m**, with the comment rewritten.
+- **Verification.** `diag separation` gives 1.000 at all three rates, `diag turn` gives 89.9° for
+  90°, and `diag yawrate` wheel odometry is within ~0.5 % of truth over the turn and settle.
+- **Pilot.** The running pilot (calibrated with the old value) was stopped. Its results moved to
+  `bench_results/_invalid_pilot_sep0264/`. The pilot was restarted from scratch at the commit
+  that contains this fix.
+
+### 6.6 Pilot status (restarted 1 Oct 2026 after the calibration)
+- The pilot runs as the user service `bench-pilot`, through `scripts/run_experiment.sh pilot 1`:
+  the experiment, then its analysis. Log: `~/uni-bot/bench_results/pilot.log`; trial log:
+  `bench_results/pilot/orchestrator.log`; results: `bench_results/pilot/analysis/`.
+- Earlier, superseded pilot runs are kept for reference only, in `bench_results/_invalid_*` and
+  `_pilot_arena_nav_lowtimeout`.
 
 ## 7. How everything was built from scratch
 
@@ -591,10 +605,11 @@ Start a fresh simulation for each test:
 | Test | Finding it reproduces | Measured 1 Oct 2026 |
 |---|---|---|
 | `straight` | Gazebo does not slide sideways | 3.001 m forward, 0.0 cm lateral; 4 wheels at 15.385 rad/s |
-| `turn` | Commanded vs achieved turn | 95.1° for 90° (1.057) |
+| `turn` | Commanded vs achieved turn | 89.9° for 90° (0.999); it was 95.1° (1.057) before the calibration |
+| `separation` | Effective wheel separation | 0.2528 m; true/commanded 1.000 at 0.3 / 0.6 / 1.0 rad/s (was 1.045 at 0.264204) |
 | `pivot` | In-place turns pivot on the front axle | Radius 0.128 m, centre (+0.127, +0.005) m |
 | `tilt` | Chassis level at rest | Roll 0.00°, pitch 0.00° |
-| `yawrate` | BNO085 sim gyro unbiased; wheels under-read turns | IMU still +0.01°/5 s; turn: truth 92.8°, IMU 93.3°, wheels 85.9° |
+| `yawrate` | BNO085 sim gyro unbiased; wheel odometry heading | IMU still +0.03°/5 s; turn + settle: truth 90.3°, IMU 90.3°, wheels 90.8° (before the calibration: wheels ~4 % short) |
 | `ekf` | Velocity-only EKF keeps heading | Yaw error 0.1° (position error 18 cm = the pivot: 2 × 0.127 × sin 45°) |
 | `bump` | Collision episodes | 1 episode, `wall_west` |
 | `glass` | LiDAR sees through glass | Beam crossing the pane at 4.87 m reads 5.21 m |
@@ -610,7 +625,8 @@ Start a fresh simulation for each test:
 | `0fd141e` | feat/nav-benchmark | Pilot fixes, all ground truth and missions, protocol v1.2 |
 | `df5caaf` | feat/nav-benchmark | Tight-SLAM ablation, RPLIDAR A1 removed, Sources section, this log |
 | `651fbd5` | feat/nav-benchmark | Record commit hash in this log |
-| (latest; see `git log`) | feat/nav-benchmark | `diag` tests for every finding; section 7 "How everything was built from scratch" |
+| `d06570e` | feat/nav-benchmark | `diag` tests for every finding; section 7 "How everything was built from scratch" |
+| (latest; see `git log`) | feat/nav-benchmark | Sim wheel_separation calibrated to 0.2528 m (`diag separation`); `run_experiment.sh`; pilot restarted |
 
 `feat/nav-benchmark` is **not pushed**. Push it with
 `git push git@github.com:Unipod-Robotics/uni-bot.git feat/nav-benchmark`.

@@ -1,7 +1,7 @@
 # Low-Cost Indoor Navigation Benchmark: Research Protocol
 
 **Project:** ubot, Unipod-Robotics · **Target venue:** IEEE/RSJ IROS 2027 (submission deadline
-1 March 2027; 6 pages + 2 references) · **Protocol version:** 1.3, 1 October 2026 ·
+1 March 2027; 6 pages + 2 references) · **Protocol version:** 1.4, 1 October 2026 ·
 **Code:** `src/ubot/ubot_bench` and `src/ubot/ubot_worlds` on branch `feat/nav-benchmark`.
 
 This document is the single reference for how the study is run. Anything that changes the design
@@ -75,8 +75,10 @@ and navigation benchmarks. Any new close work goes into this section and the cha
   0.0325 m.
 - **Drive.**
   - Front wheels are commanded and carry encoders; the rear wheels mirror them.
-  - ros2_control `diff_drive_controller`: wheel_separation 0.264204 in sim; 0.4192 on the real
-    robot (effective skid-steer value).
+  - ros2_control `diff_drive_controller`: **effective** wheel separation, calibrated per platform
+    against its own ground truth. Sim: 0.2528 m (`diag separation`, 1 Oct 2026; true/commanded
+    turn rate 1.000 at 0.3–1.0 rad/s). Real robot: 0.4192 m. The CAD wheel track is 0.2264 m;
+    a skid-steer turns as if its wheels were further apart because it scrubs sideways.
 - **IMU.** BNO085; the EKF fuses its yaw rate.
   - Real gyro noise (E2 still test) is σ = 0.0019 rad/s, and the sim uses the same value.
 - **EKF.** robot_localization fuses wheel vx and yaw rate plus IMU yaw rate (`sim_ekf.yaml` =
@@ -394,7 +396,12 @@ fixed before any reported campaign:
 | Warehouse bounds included a strip outside the walls, reachable through doors | Bounds set just inside the measured outer walls |
 | Bookstore storefront is open at the scan plane (sill below) | Three-slice traversability ground truth (6.2) |
 
-**Arena results so far (3 seeds; navigation re-run pending after the timeout fix):**
+**Calibration fix and restart.** On 1 Oct 2026 the sim wheel separation was found to be stale
+(turns overshot 4.5 % and odometry under-read them). It was calibrated to 0.2528 m and the pilot
+was **restarted from scratch**. The numbers below come from the earlier pilot runs and only
+illustrate the effects; the restarted pilot replaces them.
+
+**Earlier arena results (3 seeds, superseded):**
 - Mapping: SLAM ATE is REF 7.2 cm vs MS200 7.5 cm, RPE per 1 m is 6.2 vs 9.4 cm, and map F1 is
   1.00 for both. In a 5 × 5 m arena the online estimate is dominated by motion between SLAM
   updates and the pivot (section 12), not by sensor noise.
@@ -447,7 +454,7 @@ SRCC (RQ5). All others are secondary.
 | Gazebo camera ignores exposure and noise in low light, so C4 in sim mostly tests nothing for stereo | Reported as a known simulator limitation; the real C4 is exploratory |
 | Mapping by a ground-truth follower in sim vs teleop replay on the real robot | Identical path within each platform. The path difference between platforms is part of the RQ5 gap |
 | Skid-steer odometry depends on floor friction | The real floor is the same for all stacks; wheel calibration check per session |
-| Wheel-odometry yaw under-reads turns by ~4 % in sim | Measured (EKF uses IMU yaw rate, which corrects heading); reported |
+| Wheel-odometry yaw under-read turns by ~4.5 % in sim (stale wheel_separation 0.264204) | Fixed on 1 Oct 2026: calibrated to 0.2528 m. Turns now execute and odometry reads within 1 %. Re-calibrate (`diag separation`) after any change to the robot model |
 | One SLAM method and one controller | Intentional: the sensor is the variable. A Cartographer ablation is future work |
 | slam_toolbox scan-matches only after 0.5 m or 0.5 rad of motion (its defaults, kept for ecological validity) | Between updates, the online estimate is odometry, which hides sensor differences in small worlds (pilot: REF ≈ MS200 in the arena). **Decided 2026-10-01:** keep the defaults for the main results and run the tight 0.1 m / 0.1 rad profile as a paired ablation (`sim_core_tight`, section 5) |
 | Scan-plane height (0.36 m) sees over sills and low shelves (bookstore) | That is real behaviour of this robot; traversability ground truth separates the effect |
@@ -595,3 +602,4 @@ search on 30 September 2026; the links were current on that date.
 | 2026-09-30 | v1.1 | Added the measured pivot behaviour (4.1), bumper and glass validation, physics-engine note, pivot measurement on the real robot (7.3). Sim now drives all four wheels explicitly (as the ESP32 does); wheel friction direction set to the axle |
 | 2026-10-01 | v1.2 | Pilot fixes (9.4): route straightening and clearance, stuck detection, stale-install guard, bounded Nav2 startup, Nav2 server timeouts, warehouse bounds and spacing, position-only success metric |
 | 2026-10-01 | v1.3 | RPLIDAR A1 dropped (not used). Tight SLAM profile (0.1 m / 0.1 rad) added as a paired ablation (`sim_core_tight`). Sources section with links added |
+| 2026-10-01 | v1.4 | Sim wheel_separation calibrated 0.264204 → 0.2528 m (`diag separation`); pilot restarted from scratch |

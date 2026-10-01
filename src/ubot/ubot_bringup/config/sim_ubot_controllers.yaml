@@ -20,16 +20,15 @@ diff_drive_controller:
     left_wheel_names: ["front_left_wheel_joint", "rear_left_wheel_joint"]
     right_wheel_names: ["front_right_wheel_joint", "rear_right_wheel_joint"]
 
-    # NOT the geometric track (0.2264 m). A 4-wheel skid-steer must scrub its tyres to
-    # turn, so it rotates slower than the geometry predicts and the odometry needs the
-    # EFFECTIVE separation. Deliberately the same value as the real robot
-    # (ubot_controllers.yaml / diff_controller.h): the sim's lateral wheel friction
-    # (mu2 = 0.12 in ubot_gazebo.urdf.xacro) was tuned so this value is correct in sim too.
-    # Verified against Gazebo ground truth: actual/commanded yaw rate = 1.001.
-    # If the real robot is recalibrated to a different value, retune mu2 rather than
-    # letting sim and real drift apart (higher mu2 = less scrub = larger effective
-    # separation; mu2 = 1.1 locks the wheels entirely).
-    wheel_separation: 0.264204
+    # EFFECTIVE separation, not the geometric track (0.2264 m): a 4-wheel skid-steer scrubs its
+    # tyres to turn, so it rotates slower than the track predicts. Calibrated against Gazebo
+    # ground truth on 2026-10-01 with `ros2 run ubot_bench diag separation`: steady in-place turns
+    # at 0.3 / 0.6 / 1.0 rad/s all gave true/commanded = 1.045 with the old 0.264204, so the
+    # effective separation is 0.264204 / 1.045 = 0.2528 m (rate-independent).
+    # The real robot is calibrated separately (0.4192 m in ubot_controllers.yaml): its rubber
+    # tyres scrub far more. Each platform is calibrated against its own ground truth; re-run the
+    # diag test after any change to the chassis, wheels, mass or friction.
+    wheel_separation: 0.2528
     wheel_radius: 0.0325   # wheel_radius (Inspection Robot 01 CAD)
 
     # Odometry settings

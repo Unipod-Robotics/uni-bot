@@ -9,12 +9,14 @@ Gazebo, and prints a result next to the value recorded when the finding was made
 
 Tests
   straight  drive 3 m straight: lateral drift and per-wheel speeds          (expect 0.0 cm, equal)
-  turn      command 90 deg in place: achieved yaw / commanded               (expect ~1.05)
+  turn      command 90 deg in place: achieved yaw / commanded               (expect ~1.00)
   pivot     command 360 deg in place: circle fit of the base path,
             rotation centre in the body frame                    (expect (+0.127, 0.0) m: front axle)
+  separation  steady in-place turns at 0.3 / 0.6 / 1.0 rad/s: true vs commanded rate and the
+            effective wheel separation (compare with sim_ubot_controllers.yaml)
   tilt      chassis roll / pitch at rest                                    (expect 0.00 / 0.00 deg)
   yawrate   integrate IMU, wheel-odometry and true yaw over still/turn/still
-                                       (expect IMU still drift ~0; wheel under-reads turns ~4 %)
+                         (expect IMU still drift ~0; wheel = truth within ~1 % over turn + settle)
   ekf       drive 1 m, turn 90 deg left, drive 1 m (arena, from the spawn);
             /odometry/filtered vs truth                                     (expect yaw err < 1 deg)
   bump      reverse into the west wall (arena only): collision episodes     (expect 1 episode)
@@ -145,7 +147,8 @@ def t_turn(n):
     n.stop(1.5)
     yaws.append(n.gt[3])
     tot = math.degrees(float(np.sum(np.angle(np.exp(1j * np.diff([y0] + yaws))))))
-    print(f'turn: commanded 90.0 deg, achieved {tot:.1f} deg, ratio {tot / 90:.3f} (expect ~1.05)')
+    print(f'turn: commanded 90.0 deg, achieved {tot:.1f} deg, ratio {tot / 90:.3f} '
+          f'(expect ~1.00 with the calibrated wheel_separation; 1.057 before, at 0.264204)')
 
 
 def t_pivot(n):
@@ -183,7 +186,8 @@ def t_yawrate(n):
     seg('turn 90', 0.8, (math.pi / 2) / 0.8)
     seg('settle 1 s', 0.0, 1.0)
     seg('still 5 s', 0.0, 5.0)
-    print('  expect: IMU still ~0 (BNO085 model, no bias); wheel under-reads the turn by ~4 %')
+    print('  expect: IMU still ~0 (BNO085 model, no bias); wheel = truth within ~1 % over '
+          'turn + settle (it under-read by ~4 % before the wheel_separation calibration)')
 
 
 def t_ekf(n):
@@ -237,8 +241,34 @@ def t_glass(n):
           f'(expect the wall behind: larger than the pane distance)')
 
 
+def t_separation(n):
+    """Steady in-place turns at several rates. The controller converts a commanded rate into
+    wheel speeds with wheel_separation (sep); the robot turns at the rate its EFFECTIVE separation
+    allows: w_true = w_cmd * sep / sep_eff, so sep_eff = sep * w_cmd / w_true."""
+    import yaml
+    from ament_index_python.packages import get_package_share_directory
+    import os
+    cfg = yaml.safe_load(open(os.path.join(get_package_share_directory('ubot_bringup'), 'config',
+                                           'sim_ubot_controllers.yaml')))
+    sep = float(cfg['diff_drive_controller']['ros__parameters']['wheel_separation'])
+    print(f'separation: controller wheel_separation = {sep:.4f} m')
+    for w in (0.3, 0.6, 1.0):
+        n.drive(0.0, w, 1.5)                                   # spin up
+        with n.lock:
+            n.gt_log.clear()
+        n.drive(0.0, w, min(2 * math.pi / w, 8.0))             # steady part
+        with n.lock:
+            L = np.array(n.gt_log)
+        n.stop(1.0)
+        yaw = np.unwrap(L[:, 3])
+        w_true = (yaw[-1] - yaw[0]) / (L[-1, 0] - L[0, 0])
+        print(f'  w_cmd {w:.1f} rad/s: w_true {w_true:.3f} (ratio {w_true / w:.3f}), '
+              f'effective separation {sep * w / w_true:.4f} m')
+
+
 TESTS = {'straight': t_straight, 'turn': t_turn, 'pivot': t_pivot, 'tilt': t_tilt,
-         'yawrate': t_yawrate, 'ekf': t_ekf, 'bump': t_bump, 'glass': t_glass}
+         'yawrate': t_yawrate, 'ekf': t_ekf, 'bump': t_bump, 'glass': t_glass,
+         'separation': t_separation}
 
 
 def main():
