@@ -243,7 +243,19 @@ def cmd_run(a):
     exp = load_experiment(a.experiment)
     exp_dir = os.path.join(results_root(), exp['name'])
     os.makedirs(exp_dir, exist_ok=True)
-    exp['code_version'] = code_version()
+    # One entry per invocation, so a resumed experiment keeps the commit of every run.
+    prev = {}
+    try:
+        with open(os.path.join(exp_dir, 'experiment.yaml')) as f:
+            prev = yaml.safe_load(f) or {}
+    except OSError:
+        pass
+    runs = prev.get('runs', [])
+    if not runs and prev.get('code_version'):
+        runs.append({'started': 'first run', **prev['code_version']})
+    runs.append({'started': time.strftime('%Y-%m-%d %H:%M:%S'), **code_version()})
+    exp['code_version'] = runs[-1]
+    exp['runs'] = runs
     with open(os.path.join(exp_dir, 'experiment.yaml'), 'w') as f:
         yaml.safe_dump(exp, f, sort_keys=False)
     all_trials = trials(exp)

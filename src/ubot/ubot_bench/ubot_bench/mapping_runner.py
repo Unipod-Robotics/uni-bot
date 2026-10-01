@@ -6,7 +6,8 @@ Outputs in --out:
   gt.tum     ground truth base_footprint pose (Gazebo world frame), at Gazebo pose rate
   odom.tum   EKF estimate /odometry/filtered (odom frame) = the odometry-only (B0) baseline
   slam.tum   SLAM estimate map -> base_footprint (TF), sampled at every 5th ground-truth stamp
-  map.yaml/.pgm, map.posegraph/.data   slam_toolbox map and serialized pose graph
+  map.yaml/.pgm, map.posegraph/.data   slam_toolbox map (from /map, first message after the
+                                       robot stopped) and serialized pose graph
   result.json  status, timings, route and driven length, contacts
 
 Usage (normally started by the orchestrator next to bench_sim.launch.py phase:=mapping):
@@ -58,6 +59,13 @@ class Mapper(Node):
         self.create_subscription(Odometry, '/ground_truth/odom', self.on_gt, 50)
         self.create_subscription(Odometry, '/odometry/filtered', self.on_odom, 50)
         self.create_subscription(String, '/ground_truth/contacts', self.on_contact, 50)
+        from nav_msgs.msg import OccupancyGrid
+        from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+        self.map_msg = None
+        self.create_subscription(
+            OccupancyGrid, '/map', lambda m: setattr(self, 'map_msg', m),
+            QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                       durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.pending_slam = []
 
     def on_gt(self, m):
@@ -186,7 +194,7 @@ def main():
         time.sleep(2.0)
         node.flush_slam()
         result.update(status=status, sim_duration_s=t1 - t0, wall_duration_s=time.time() - wall0)
-        result.update(save_map(node, a.out))
+        result.update(save_map(node, a.out, t_stop=t1))
     finally:
         with node.lock:
             result['contacts'] = list(node.contacts)
@@ -201,21 +209,36 @@ def main():
         print(f"mapping {result.get('status')}: {result}")
 
 
-def save_map(node, out):
-    """slam_toolbox map (pgm/yaml) and serialized pose graph."""
-    from slam_toolbox.srv import SaveMap, SerializePoseGraph
-    from std_msgs.msg import String as Str
-    res = {}
-    cli = node.create_client(SaveMap, '/slam_toolbox/save_map')
-    if cli.wait_for_service(timeout_sec=30.0):
-        fut = cli.call_async(SaveMap.Request(name=Str(data=os.path.join(out, 'map'))))
-        res['map_saved'] = wait_for(fut.done, 60.0) and fut.result() is not None
-    cli2 = node.create_client(SerializePoseGraph, '/slam_toolbox/serialize_map')
-    if cli2.wait_for_service(timeout_sec=10.0):
-        fut = cli2.call_async(SerializePoseGraph.Request(filename=os.path.join(out, 'map')))
+def save_map(node, out, t_stop, timeout=30.0):
+    """Write the slam_toolbox map (map.yaml/.pgm, trinary) from its /map topic and serialize the
+    pose graph.
+
+    The map is the first /map message stamped after the robot stopped (t_stop, sim time):
+    slam_toolbox publishes /map every map_update_interval (5 s), so this waits up to `timeout`
+    wall seconds. slam_toolbox's own save_map service was not used: its internal map_saver waits
+    only 2 s for /map and failed in ~1 of 3 pilot trials ("Failed to spin map subscription").
+    """
+    import numpy as np
+    from slam_toolbox.srv import SerializePoseGraph
+
+    from ubot_bench.grid import FREE, OCC, UNKNOWN, Grid
+    res = {'map_saved': False}
+    ok = wait_for(lambda: node.map_msg is not None
+                  and stamp_s(node.map_msg.header.stamp) >= t_stop, timeout)
+    m = node.map_msg
+    if m is not None:
+        raw = np.asarray(m.data, dtype=np.int16).reshape(m.info.height, m.info.width)[::-1]
+        data = np.full(raw.shape, UNKNOWN, dtype=np.int8)
+        data[(raw >= 0) & (raw <= 25)] = FREE          # map_saver's default free_thresh 0.25
+        data[raw >= 65] = OCC                          # and occupied_thresh 0.65
+        Grid(data, m.info.resolution, (m.info.origin.position.x,
+                                       m.info.origin.position.y)).save(os.path.join(out, 'map.yaml'))
+        res['map_saved'] = True
+        res['map_stamp_after_stop'] = bool(ok)
+    cli = node.create_client(SerializePoseGraph, '/slam_toolbox/serialize_map')
+    if cli.wait_for_service(timeout_sec=10.0):
+        fut = cli.call_async(SerializePoseGraph.Request(filename=os.path.join(out, 'map')))
         res['posegraph_saved'] = wait_for(fut.done, 60.0) and fut.result() is not None
-    res['map_saved'] = res.get('map_saved', False) and os.path.exists(
-        os.path.join(out, 'map.yaml'))
     return res
 
 
